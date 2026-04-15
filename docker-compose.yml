@@ -1,0 +1,39 @@
+services:
+  kafka:
+    image: apache/kafka:3.9.1
+    container_name: zigzag-kafka
+    ports:
+      - "9092:9092"
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.1
+    container_name: zigzag-elasticsearch
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: "false"
+      ES_JAVA_OPTS: "-Xms512m -Xmx512m"
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    volumes:
+      - elasticsearch-data:/usr/share/elasticsearch/data
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.11.1
+    container_name: zigzag-kibana
+    depends_on:
+      - elasticsearch
+    environment:
+      ELASTICSEARCH_HOSTS: http://elasticsearch:9200
+    ports:
+      - "5601:5601"
+
+  mailpit:
+    image: axllent/mailpit
+    container_name: zigzag-mailpit
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+
+volumes:
+  elasticsearch-data:
