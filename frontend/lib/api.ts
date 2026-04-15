@@ -1,5 +1,6 @@
 import type {
   AddCartItemRequest,
+  ApiErrorResponse,
   AuthResponse,
   CartResponse,
   CheckoutRequest,
@@ -10,6 +11,7 @@ import type {
   OrderSummaryResponse,
   ProductResponse,
   ProductSearchPageResponse,
+  RegisterRequest,
   RefundRequest,
   UpdateDeliveryRequest
 } from "@/lib/types";
@@ -30,8 +32,12 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   });
 
   if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(errorText || `Request failed: ${response.status}`);
+    const errorMessage = await extractErrorMessage(response);
+    throw new Error(errorMessage);
+  }
+
+  if (response.status === 204) {
+    return undefined as T;
   }
 
   return (await response.json()) as T;
@@ -56,7 +62,7 @@ export function login(payload: LoginRequest) {
   });
 }
 
-export function register(payload: { name: string; email: string; password: string }) {
+export function register(payload: RegisterRequest) {
   return apiFetch<AuthResponse>("/api/auth/register", {
     method: "POST",
     body: JSON.stringify(payload)
@@ -138,4 +144,22 @@ export function updateDelivery(orderId: number, payload: UpdateDeliveryRequest) 
     method: "PATCH",
     body: JSON.stringify(payload)
   });
+}
+
+async function extractErrorMessage(response: Response) {
+  const contentType = response.headers.get("content-type") ?? "";
+
+  if (contentType.includes("application/json")) {
+    const payload = (await response.json().catch(() => null)) as ApiErrorResponse | null;
+    if (payload?.message) {
+      return payload.message;
+    }
+
+    if (payload?.error) {
+      return payload.error;
+    }
+  }
+
+  const errorText = await response.text().catch(() => "");
+  return errorText || `Request failed: ${response.status}`;
 }

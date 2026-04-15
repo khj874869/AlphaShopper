@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { checkout, clearCart, getCart, getCoupons, removeCartItem } from "@/lib/api";
+import { buildAuthPath } from "@/lib/auth";
 import { formatCurrency } from "@/lib/format";
 import { useSessionStore } from "@/store/session-store";
 
@@ -75,9 +76,14 @@ export function CartCheckoutView() {
           <h1>Login is required before using the cart or checkout flow.</h1>
           <p className="muted">Demo account: buyer1@zigzag.local / buyer1234</p>
         </div>
-        <Link className="button button--dark" href="/login">
-          Open login
-        </Link>
+        <div className="auth-actions">
+          <Link className="button button--dark" href={buildAuthPath({ next: "/cart" })}>
+            Open login
+          </Link>
+          <Link className="button button--ghostDark" href={buildAuthPath({ next: "/cart", mode: "register" })}>
+            Create account
+          </Link>
+        </div>
       </section>
     );
   }

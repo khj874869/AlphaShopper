@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { addCartItem, getCoupons, getOrders, getProducts, searchProducts } from "@/lib/api";
+import { buildAuthPath } from "@/lib/auth";
 import { formatCurrency } from "@/lib/format";
 import { useSessionStore } from "@/store/session-store";
 import { ProductVisual } from "@/components/product-visual";
@@ -61,7 +62,7 @@ export function HomeView() {
             <Link className="button button--light" href="/products">
               Explore products
             </Link>
-            <Link className="button button--ghost" href={member ? "/cart" : "/login"}>
+            <Link className="button button--ghost" href={member ? "/cart" : buildAuthPath({ next: "/cart" })}>
               {member ? "Checkout now" : "Login to shop"}
             </Link>
           </div>
@@ -97,7 +98,7 @@ export function HomeView() {
               Demo account: <strong>buyer1@zigzag.local / buyer1234</strong>
             </p>
           </div>
-          <Link className="button button--dark" href="/login">
+          <Link className="button button--dark" href={buildAuthPath({ next: "/cart" })}>
             Open login
           </Link>
         </section>
@@ -168,7 +169,7 @@ export function HomeView() {
               </article>
             ))}
           </div>
-          <Link className="button button--dark" href={member ? "/cart" : "/login"}>
+          <Link className="button button--dark" href={member ? "/cart" : buildAuthPath({ next: "/cart" })}>
             {member ? "Use coupon at checkout" : "Login to use coupon"}
           </Link>
         </div>
@@ -180,7 +181,7 @@ export function HomeView() {
             <p className="eyebrow">Order radar</p>
             <h2>Recent order status</h2>
           </div>
-          <Link className="text-link" href={member ? "/orders" : "/login"}>
+          <Link className="text-link" href={member ? "/orders" : buildAuthPath({ next: "/orders" })}>
             {member ? "View all orders" : "Login first"}
           </Link>
         </div>
@@ -229,9 +230,15 @@ function ProductTile({
         <Link className="button button--ghostDark" href={`/products/${product.id}`}>
           Detail
         </Link>
-        <button className="button button--dark" disabled={!canAdd} onClick={onAdd}>
-          Add to bag
-        </button>
+        {canAdd ? (
+          <button className="button button--dark" onClick={onAdd}>
+            Add to bag
+          </button>
+        ) : (
+          <Link className="button button--dark" href={buildAuthPath({ next: `/products/${product.id}` })}>
+            Login to buy
+          </Link>
+        )}
       </div>
     </article>
   );

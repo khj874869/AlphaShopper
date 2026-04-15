@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { addCartItem, getProducts, searchProducts } from "@/lib/api";
+import { buildAuthPath } from "@/lib/auth";
 import { formatCurrency } from "@/lib/format";
 import { useSessionStore } from "@/store/session-store";
 import { ProductVisual } from "@/components/product-visual";
@@ -64,7 +65,7 @@ export function ProductCatalogView() {
             <p className="eyebrow">Shopping session</p>
             <h2>Product browsing is public. Cart actions require login.</h2>
           </div>
-          <Link className="button button--dark" href="/login">
+          <Link className="button button--dark" href={buildAuthPath({ next: "/products" })}>
             Login
           </Link>
         </section>
@@ -85,13 +86,15 @@ export function ProductCatalogView() {
               <Link className="button button--ghostDark" href={`/products/${product.id}`}>
                 View
               </Link>
-              <button
-                className="button button--dark"
-                disabled={!member}
-                onClick={() => addToCartMutation.mutate(product.id)}
-              >
-                Add to bag
-              </button>
+              {member ? (
+                <button className="button button--dark" onClick={() => addToCartMutation.mutate(product.id)}>
+                  Add to bag
+                </button>
+              ) : (
+                <Link className="button button--dark" href={buildAuthPath({ next: `/products/${product.id}` })}>
+                  Login to buy
+                </Link>
+              )}
             </div>
           </article>
         ))}

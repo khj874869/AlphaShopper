@@ -15,6 +15,20 @@ export type LoginRequest = {
   password: string;
 };
 
+export type RegisterRequest = {
+  name: string;
+  email: string;
+  password: string;
+};
+
+export type ApiErrorResponse = {
+  timestamp?: string;
+  status?: number;
+  error?: string;
+  message?: string;
+  path?: string;
+};
+
 export type ProductResponse = {
   id: number;
   name: string;

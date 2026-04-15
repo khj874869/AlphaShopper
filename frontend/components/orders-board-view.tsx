@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getOrders, refundOrder, updateDelivery } from "@/lib/api";
+import { buildAuthPath } from "@/lib/auth";
 import { formatCurrency, formatDateTime } from "@/lib/format";
 import { useSessionStore } from "@/store/session-store";
 
@@ -49,9 +50,14 @@ export function OrdersBoardView() {
           <p className="eyebrow">Protected orders</p>
           <h1>Login is required to view or manage your orders.</h1>
         </div>
-        <Link className="button button--dark" href="/login">
-          Open login
-        </Link>
+        <div className="auth-actions">
+          <Link className="button button--dark" href={buildAuthPath({ next: "/orders" })}>
+            Open login
+          </Link>
+          <Link className="button button--ghostDark" href={buildAuthPath({ next: "/orders", mode: "register" })}>
+            Create account
+          </Link>
+        </div>
       </section>
     );
   }

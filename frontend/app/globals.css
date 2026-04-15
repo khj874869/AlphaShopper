@@ -134,10 +134,21 @@ button {
   font-size: 0.95rem;
 }
 
+.auth-badge small {
+  color: var(--ink-soft);
+  font-size: 0.75rem;
+}
+
 .main-nav a {
   padding: 10px 14px;
   border-radius: 999px;
   color: var(--ink-soft);
+}
+
+.main-nav a.is-active {
+  background: rgba(16, 17, 20, 0.09);
+  color: var(--ink);
+  font-weight: 700;
 }
 
 .main-nav a:hover {
@@ -355,6 +366,12 @@ button {
   grid-template-columns: minmax(0, 1.4fr) minmax(320px, 0.86fr);
 }
 
+.auth-shell {
+  display: grid;
+  gap: 22px;
+  grid-template-columns: minmax(0, 1.1fr) minmax(360px, 0.9fr);
+}
+
 .product-grid,
 .catalog-grid,
 .order-strip {
@@ -529,7 +546,14 @@ button {
   gap: 20px;
 }
 
-.auth-panel {
+.auth-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.auth-panel,
+.auth-form-panel {
   display: grid;
   gap: 16px;
 }
@@ -543,6 +567,159 @@ button {
   background: rgba(255, 255, 255, 0.96);
 }
 
+.auth-showcase {
+  display: grid;
+  gap: 22px;
+  padding: 34px;
+  border-radius: var(--radius-xl);
+  background:
+    radial-gradient(circle at top left, rgba(255, 92, 57, 0.26), transparent 26%),
+    linear-gradient(135deg, #111318 0%, #23262f 60%, #393d4a 100%);
+  color: white;
+  box-shadow: var(--shadow);
+}
+
+.auth-showcase__copy h1 {
+  margin: 10px 0 12px;
+  font-size: clamp(2rem, 3vw, 3.6rem);
+  line-height: 0.98;
+  letter-spacing: -0.05em;
+}
+
+.auth-showcase__copy p:last-child,
+.auth-note p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.76);
+  line-height: 1.7;
+}
+
+.auth-demo-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.auth-demo-card {
+  display: grid;
+  gap: 8px;
+  padding: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.08);
+  color: white;
+  text-align: left;
+}
+
+.auth-demo-card span,
+.auth-note strong {
+  font-size: 0.78rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.auth-demo-card strong {
+  font-size: 1rem;
+  line-height: 1.4;
+}
+
+.auth-demo-card small {
+  color: rgba(255, 255, 255, 0.68);
+}
+
+.auth-form-panel {
+  align-content: start;
+}
+
+.auth-switch {
+  display: inline-flex;
+  padding: 6px;
+  border-radius: 999px;
+  background: rgba(16, 17, 20, 0.06);
+}
+
+.auth-switch__item {
+  border: 0;
+  min-width: 120px;
+  padding: 12px 18px;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink-soft);
+  font-weight: 700;
+}
+
+.auth-switch__item--active {
+  background: var(--surface-dark);
+  color: white;
+}
+
+.auth-form {
+  display: grid;
+  gap: 16px;
+}
+
+.form-helper {
+  margin: -4px 0 0;
+  color: var(--ink-soft);
+  font-size: 0.92rem;
+  line-height: 1.6;
+}
+
+.auth-note {
+  display: grid;
+  gap: 8px;
+  padding: 18px;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.auth-note code {
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.auth-note--compact {
+  background: rgba(16, 17, 20, 0.04);
+  border-color: rgba(16, 17, 20, 0.08);
+}
+
+.auth-note--compact p {
+  color: var(--ink-soft);
+}
+
+.auth-note--intent {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.auth-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+  color: var(--ink-soft);
+}
+
+.auth-footer a {
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.auth-footer--soft {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.inline-switch {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  font-weight: 700;
+}
+
 .form-error {
   margin: 0;
   color: #ff5c39;
@@ -553,6 +730,7 @@ button {
   .hero-panel,
   .two-column,
   .checkout-layout,
+  .auth-shell,
   .auth-layout,
   .detail-hero,
   .catalog-grid,
@@ -583,12 +761,14 @@ button {
   .hero-panel,
   .catalog-hero,
   .detail-hero,
+  .auth-showcase,
   .panel {
     padding: 20px;
   }
 
   .metric-grid,
-  .detail-stats {
+  .detail-stats,
+  .auth-demo-grid {
     grid-template-columns: 1fr;
   }
 }

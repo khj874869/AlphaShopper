@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { addCartItem, getProduct } from "@/lib/api";
+import { buildAuthPath } from "@/lib/auth";
 import { formatCurrency } from "@/lib/format";
 import { useSessionStore } from "@/store/session-store";
 import { ProductVisual } from "@/components/product-visual";
@@ -51,12 +52,12 @@ export function ProductDetailView({ productId }: { productId: number }) {
                 Add to bag
               </button>
             ) : (
-              <Link className="button button--dark" href="/login">
+              <Link className="button button--dark" href={buildAuthPath({ next: `/products/${productId}` })}>
                 Login to buy
               </Link>
             )}
-            <Link className="button button--ghostDark" href="/cart">
-              Go to cart
+            <Link className="button button--ghostDark" href={member ? "/cart" : buildAuthPath({ next: "/cart" })}>
+              {member ? "Go to cart" : "Login for cart"}
             </Link>
           </div>
         </div>

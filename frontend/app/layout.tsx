@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { QueryProvider } from "@/components/query-provider";
 import { AppHeader } from "@/components/app-header";
+import { SessionSync } from "@/components/session-sync";
 
 export const metadata: Metadata = {
   title: "AlphaShopper Web",
@@ -17,6 +18,7 @@ export default function RootLayout({
     <html lang="ko">
       <body>
         <QueryProvider>
+          <SessionSync />
           <div className="site-shell">
             <AppHeader />
             <main className="page-shell">{children}</main>
