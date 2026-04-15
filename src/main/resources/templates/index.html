@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alpha Shopper</title>
+    <meta name="description" content="Musinsa x Zigzag inspired commerce front for Alpha Shopper">
+    <link rel="stylesheet" th:href="@{/css/app.css}" href="/css/app.css">
+</head>
+<body>
+<div class="app-shell">
+    <div class="notice-bar">
+        <span>ALPHA EDITION</span>
+        <span>Spring Boot + JPA + Elasticsearch + Kafka + Mail</span>
+        <a href="http://localhost:8025" target="_blank" rel="noreferrer">Mailpit Inbox</a>
+    </div>
+
+    <header class="top-header">
+        <div class="brand-block">
+            <p class="eyebrow">alpha shopper</p>
+            <h1>Urban select,<br>fast checkout.</h1>
+        </div>
+        <div class="header-tools">
+            <div class="member-switch">
+                <label for="memberSelect">Shopper</label>
+                <select id="memberSelect"></select>
+            </div>
+            <div class="status-stack">
+                <span>elastic search</span>
+                <span>event stream</span>
+                <span>mail alerts</span>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <section class="hero-grid">
+            <article class="hero-card hero-dark">
+                <p class="hero-tag">musinsa tone</p>
+                <h2>Black editorial layout with dense fashion cards and direct merchandising.</h2>
+                <p>
+                    Heavy typography, monochrome blocks, bold product framing.
+                    The grid below keeps the visual weight of an editorial commerce homepage.
+                </p>
+                <div class="hero-metrics">
+                    <div>
+                        <strong id="metricProducts">0</strong>
+                        <span>products</span>
+                    </div>
+                    <div>
+                        <strong id="metricOrders">0</strong>
+                        <span>orders</span>
+                    </div>
+                    <div>
+                        <strong id="metricCart">0</strong>
+                        <span>cart items</span>
+                    </div>
+                </div>
+            </article>
+
+            <article class="hero-card hero-bright">
+                <p class="hero-tag">zigzag tone</p>
+                <h2>Bright commerce controls, coupon-centric actions, and fast repeat purchasing.</h2>
+                <p>
+                    Search, coupon pick, and checkout actions stay close together so the page behaves like a live shopping cockpit.
+                </p>
+                <form id="searchForm" class="search-panel">
+                    <input id="searchInput" type="search" placeholder="Search brand, item, mood">
+                    <button type="submit">Search</button>
+                    <button type="button" id="clearSearchButton" class="ghost-button">Reset</button>
+                </form>
+                <div class="keyword-strip">
+                    <button type="button" class="keyword-chip" data-keyword="denim">denim</button>
+                    <button type="button" class="keyword-chip" data-keyword="knit">knit</button>
+                    <button type="button" class="keyword-chip" data-keyword="bag">bag</button>
+                    <button type="button" class="keyword-chip" data-keyword="spring">spring</button>
+                </div>
+                <p id="searchSummary" class="search-summary">All active products</p>
+            </article>
+        </section>
+
+        <section class="ops-strip">
+            <a class="ops-card" href="http://localhost:9200" target="_blank" rel="noreferrer">
+                <span>search engine</span>
+                <strong>Elasticsearch</strong>
+                <p>Inspect index and cluster state</p>
+            </a>
+            <button id="reindexButton" class="ops-card ops-button" type="button">
+                <span>catalog sync</span>
+                <strong>Reindex Products</strong>
+                <p>Push current DB products into ES</p>
+            </button>
+            <a class="ops-card" href="http://localhost:8025" target="_blank" rel="noreferrer">
+                <span>alert inbox</span>
+                <strong>Mailpit UI</strong>
+                <p>Review outgoing order mails</p>
+            </a>
+        </section>
+
+        <section class="content-grid">
+            <div class="catalog-column">
+                <div class="section-head">
+                    <div>
+                        <p class="eyebrow">new drops</p>
+                        <h3>Curated Product Grid</h3>
+                    </div>
+                    <p class="section-copy">Search-first catalog wired to Elasticsearch, with live cart actions on each card.</p>
+                </div>
+                <div id="productGrid" class="product-grid"></div>
+            </div>
+
+            <aside class="checkout-column">
+                <div class="sticky-stack">
+                    <section class="panel">
+                        <div class="panel-head">
+                            <p class="eyebrow">coupon lane</p>
+                            <h3>Available Coupons</h3>
+                        </div>
+                        <div id="couponList" class="coupon-list"></div>
+                    </section>
+
+                    <section class="panel">
+                        <div class="panel-head">
+                            <p class="eyebrow">cart rail</p>
+                            <h3>Current Cart</h3>
+                        </div>
+                        <div id="cartItems" class="cart-items"></div>
+                        <div class="cart-total">
+                            <span>Cart total</span>
+                            <strong id="cartTotal">0</strong>
+                        </div>
+                    </section>
+
+                    <section class="panel checkout-panel">
+                        <div class="panel-head">
+                            <p class="eyebrow">quick checkout</p>
+                            <h3>Place Order</h3>
+                        </div>
+                        <label class="field">
+                            <span>Shipping address</span>
+                            <input id="shippingAddressInput" type="text" value="Seoul Seongsu-ro 00">
+                        </label>
+                        <label class="field">
+                            <span>Payment reference</span>
+                            <input id="paymentReferenceInput" type="text" value="CARD-OK-UI">
+                        </label>
+                        <div class="payment-picker">
+                            <button type="button" class="payment-button active" data-method="CARD">CARD</button>
+                            <button type="button" class="payment-button" data-method="KAKAO_PAY">KAKAO</button>
+                            <button type="button" class="payment-button" data-method="NAVER_PAY">NAVER</button>
+                            <button type="button" class="payment-button" data-method="BANK_TRANSFER">BANK</button>
+                        </div>
+                        <div class="checkout-summary">
+                            <div><span>Selected coupon</span><strong id="selectedCouponLabel">none</strong></div>
+                            <div><span>Order history</span><strong id="orderCountLabel">0</strong></div>
+                        </div>
+                        <button id="checkoutButton" class="checkout-button" type="button">Checkout Now</button>
+                    </section>
+                </div>
+            </aside>
+        </section>
+
+        <section class="orders-section">
+            <div class="section-head">
+                <div>
+                    <p class="eyebrow">order feed</p>
+                    <h3>Live Orders & Delivery</h3>
+                </div>
+                <p class="section-copy">Checkout updates this board, and shipping actions trigger Kafka email notifications.</p>
+            </div>
+            <div id="ordersBoard" class="orders-board"></div>
+        </section>
+    </main>
+
+    <div id="toast" class="toast" hidden></div>
+</div>
+
+<script type="module" th:src="@{/js/app.js}" src="/js/app.js"></script>
+</body>
+</html>

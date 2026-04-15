@@ -5,14 +5,17 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 public record CreateMemberRequest(
-        @NotBlank(message = "회원 이름은 필수입니다.")
-        @Size(max = 50, message = "회원 이름은 50자 이하여야 합니다.")
+        @NotBlank(message = "Member name is required.")
+        @Size(max = 50, message = "Member name must be 50 characters or less.")
         String name,
 
-        @NotBlank(message = "이메일은 필수입니다.")
-        @Email(message = "이메일 형식이 올바르지 않습니다.")
-        @Size(max = 100, message = "이메일은 100자 이하여야 합니다.")
-        String email
+        @NotBlank(message = "Email is required.")
+        @Email(message = "Email format is invalid.")
+        @Size(max = 100, message = "Email must be 100 characters or less.")
+        String email,
+
+        @NotBlank(message = "Password is required.")
+        @Size(min = 8, max = 100, message = "Password must be between 8 and 100 characters.")
+        String password
 ) {
 }
-

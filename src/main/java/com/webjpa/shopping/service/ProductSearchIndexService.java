@@ -6,6 +6,7 @@ import com.webjpa.shopping.search.ProductDocument;
 import com.webjpa.shopping.search.ProductSearchRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
@@ -22,26 +23,47 @@ public class ProductSearchIndexService {
     private static final Logger log = LoggerFactory.getLogger(ProductSearchIndexService.class);
 
     private final ProductRepository productRepository;
-    private final ProductSearchRepository productSearchRepository;
-    private final ElasticsearchOperations elasticsearchOperations;
+    private final ObjectProvider<ProductSearchRepository> productSearchRepositoryProvider;
+    private final ObjectProvider<ElasticsearchOperations> elasticsearchOperationsProvider;
+    private final boolean searchEnabled;
     private final boolean reindexOnStartup;
 
     public ProductSearchIndexService(ProductRepository productRepository,
-                                     ProductSearchRepository productSearchRepository,
-                                     ElasticsearchOperations elasticsearchOperations,
+                                     ObjectProvider<ProductSearchRepository> productSearchRepositoryProvider,
+                                     ObjectProvider<ElasticsearchOperations> elasticsearchOperationsProvider,
+                                     @Value("${app.search.enabled:true}") boolean searchEnabled,
                                      @Value("${app.search.reindex-on-startup:true}") boolean reindexOnStartup) {
         this.productRepository = productRepository;
-        this.productSearchRepository = productSearchRepository;
-        this.elasticsearchOperations = elasticsearchOperations;
+        this.productSearchRepositoryProvider = productSearchRepositoryProvider;
+        this.elasticsearchOperationsProvider = elasticsearchOperationsProvider;
+        this.searchEnabled = searchEnabled;
         this.reindexOnStartup = reindexOnStartup;
     }
 
     public void index(Product product) {
+        if (!searchEnabled) {
+            return;
+        }
+
+        ProductSearchRepository productSearchRepository = productSearchRepositoryProvider.getIfAvailable();
+        if (productSearchRepository == null) {
+            return;
+        }
+
         ensureIndex();
         productSearchRepository.save(ProductDocument.from(product));
     }
 
     public long reindexAll() {
+        if (!searchEnabled) {
+            return 0L;
+        }
+
+        ProductSearchRepository productSearchRepository = productSearchRepositoryProvider.getIfAvailable();
+        if (productSearchRepository == null) {
+            return 0L;
+        }
+
         ensureIndex();
         List<ProductDocument> documents = productRepository.findAll().stream()
                 .map(ProductDocument::from)
@@ -68,6 +90,11 @@ public class ProductSearchIndexService {
     }
 
     private void ensureIndex() {
+        ElasticsearchOperations elasticsearchOperations = elasticsearchOperationsProvider.getIfAvailable();
+        if (elasticsearchOperations == null) {
+            return;
+        }
+
         IndexOperations indexOperations = elasticsearchOperations.indexOps(ProductDocument.class);
         if (indexOperations.exists()) {
             return;

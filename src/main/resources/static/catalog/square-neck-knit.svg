@@ -1,0 +1,10 @@
+<svg width="1200" height="1400" viewBox="0 0 1200 1400" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="1400" fill="#F6E8DF"/>
+  <rect x="120" y="110" width="960" height="1180" rx="48" fill="#5F3E36"/>
+  <path d="M355 320C355 253.726 408.726 200 475 200H725C791.274 200 845 253.726 845 320V470H355V320Z" fill="#C89B8B"/>
+  <rect x="355" y="440" width="490" height="540" rx="70" fill="#E0B2A1"/>
+  <rect x="240" y="420" width="150" height="480" rx="75" fill="#D19F8D"/>
+  <rect x="810" y="420" width="150" height="480" rx="75" fill="#D19F8D"/>
+  <text x="160" y="1080" fill="white" font-size="72" font-family="Arial, sans-serif" font-weight="700">SQUARE NECK KNIT</text>
+  <text x="160" y="1160" fill="#F1D4CA" font-size="42" font-family="Arial, sans-serif">Urban Muse / 35,000 KRW</text>
+</svg>

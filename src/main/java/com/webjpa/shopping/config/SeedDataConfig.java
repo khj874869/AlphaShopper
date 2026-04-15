@@ -3,6 +3,7 @@ package com.webjpa.shopping.config;
 import com.webjpa.shopping.domain.Coupon;
 import com.webjpa.shopping.domain.DiscountType;
 import com.webjpa.shopping.domain.Member;
+import com.webjpa.shopping.domain.MemberRole;
 import com.webjpa.shopping.domain.Product;
 import com.webjpa.shopping.repository.CouponRepository;
 import com.webjpa.shopping.repository.MemberRepository;
@@ -20,11 +21,28 @@ public class SeedDataConfig {
     @Bean
     CommandLineRunner seedData(MemberRepository memberRepository,
                                ProductRepository productRepository,
-                               CouponRepository couponRepository) {
+                               CouponRepository couponRepository,
+                               org.springframework.security.crypto.password.PasswordEncoder passwordEncoder) {
         return args -> {
             if (memberRepository.count() == 0) {
-                memberRepository.save(Member.create("Zigzag Buyer A", "buyer1@zigzag.local"));
-                memberRepository.save(Member.create("Zigzag Buyer B", "buyer2@zigzag.local"));
+                memberRepository.save(Member.create(
+                        "Zigzag Buyer A",
+                        "buyer1@zigzag.local",
+                        passwordEncoder.encode("buyer1234"),
+                        MemberRole.USER
+                ));
+                memberRepository.save(Member.create(
+                        "Zigzag Buyer B",
+                        "buyer2@zigzag.local",
+                        passwordEncoder.encode("buyer1234"),
+                        MemberRole.USER
+                ));
+                memberRepository.save(Member.create(
+                        "Alpha Admin",
+                        "admin@alphashopper.local",
+                        passwordEncoder.encode("admin1234"),
+                        MemberRole.ADMIN
+                ));
             }
 
             if (productRepository.count() == 0) {
@@ -33,21 +51,48 @@ public class SeedDataConfig {
                         "Mellow Fit",
                         BigDecimal.valueOf(42000),
                         50,
-                        "Daily basic denim pants."
+                        "Daily basic denim pants.",
+                        "/catalog/semi-wide-denim.svg"
                 ));
                 productRepository.save(new Product(
                         "Square Neck Knit",
                         "Urban Muse",
                         BigDecimal.valueOf(35000),
                         40,
-                        "Slim knit for mid-season styling."
+                        "Slim knit for mid-season styling.",
+                        "/catalog/square-neck-knit.svg"
                 ));
                 productRepository.save(new Product(
                         "Mini Shoulder Bag",
                         "Noir Studio",
                         BigDecimal.valueOf(68000),
                         25,
-                        "Lightweight shoulder bag for daily looks."
+                        "Lightweight shoulder bag for daily looks.",
+                        "/catalog/mini-shoulder-bag.svg"
+                ));
+                productRepository.save(new Product(
+                        "Cropped Leather Jacket",
+                        "Studio Layer",
+                        BigDecimal.valueOf(119000),
+                        18,
+                        "Short leather jacket with a sharp city silhouette.",
+                        "/catalog/cropped-leather-jacket.svg"
+                ));
+                productRepository.save(new Product(
+                        "Soft Pleats Skirt",
+                        "Atelier Day",
+                        BigDecimal.valueOf(54000),
+                        32,
+                        "Swing pleats skirt for clean weekday styling.",
+                        "/catalog/soft-pleats-skirt.svg"
+                ));
+                productRepository.save(new Product(
+                        "Track Sole Loafer",
+                        "Mono Lane",
+                        BigDecimal.valueOf(79000),
+                        22,
+                        "Chunky sole loafer for polished casual outfits.",
+                        "/catalog/track-sole-loafer.svg"
                 ));
             }
 

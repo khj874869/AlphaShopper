@@ -1,0 +1,23 @@
+spring:
+  kafka:
+    bootstrap-servers: localhost:9092
+    consumer:
+      group-id: test-order-notification-group
+    listener:
+      auto-startup: false
+
+app:
+  frontend:
+    allowed-origins: http://localhost:3000,http://127.0.0.1:3000
+  search:
+    enabled: false
+    reindex-on-startup: false
+  kafka:
+    auto-create-topics: false
+    topics:
+      order-notifications: order-notifications
+  mail:
+    from-address: test@alphashopper.local
+  jwt:
+    secret: alphashopper-jwt-secret-key-2026-04-15-must-be-long-enough
+    access-token-expiration-minutes: 180

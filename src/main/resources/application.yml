@@ -7,6 +7,8 @@ spring:
   h2:
     console:
       enabled: true
+  thymeleaf:
+    cache: false
   jpa:
     open-in-view: false
     hibernate:
@@ -19,6 +21,10 @@ spring:
     time-zone: Asia/Seoul
   elasticsearch:
     uris: http://localhost:9200
+  data:
+    elasticsearch:
+      repositories:
+        enabled: ${app.search.enabled:true}
   kafka:
     bootstrap-servers: localhost:9092
     producer:
@@ -52,10 +58,17 @@ logging:
     org.hibernate.SQL: debug
 
 app:
+  frontend:
+    allowed-origins: http://localhost:3000,http://127.0.0.1:3000
   search:
+    enabled: true
     reindex-on-startup: true
   kafka:
+    auto-create-topics: true
     topics:
       order-notifications: order-notifications
   mail:
     from-address: no-reply@zigzag.local
+  jwt:
+    secret: alphashopper-jwt-secret-key-2026-04-15-must-be-long-enough
+    access-token-expiration-minutes: 180

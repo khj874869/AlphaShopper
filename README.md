@@ -1,6 +1,6 @@
 # Zigzag Shop JPA
 
-Spring Boot + JPA shopping system with Elasticsearch product search, Kafka event processing, and mail notifications.
+Spring Boot + JPA shopping system with a separate Next.js web app, Elasticsearch product search, Kafka event processing, and mail notifications.
 
 Implemented features:
 
@@ -13,6 +13,7 @@ Implemented features:
 - refund with stock restoration
 - delivery status updates
 - member order history
+- Musinsa x Zigzag inspired web app UI
 - Elasticsearch product indexing and search
 - Kafka-based order event processing
 - SMTP mail notifications via Mailpit
@@ -25,6 +26,11 @@ Implemented features:
 - Spring Data Elasticsearch
 - Spring Kafka
 - Spring Mail
+- Next.js App Router
+- TypeScript
+- TanStack Query
+- Zustand
+- Custom responsive CSS
 - H2 database
 - Apache Kafka 3.9.1
 - Elasticsearch 8.11.1
@@ -48,8 +54,23 @@ Services:
 ## Run application
 
 ```bash
-mvn spring-boot:run
+./mvnw spring-boot:run
 ```
+
+Back-office storefront shell:
+
+- `http://localhost:8080/`
+
+Next.js web app:
+
+```bash
+cd frontend
+cp .env.local.example .env.local
+npm install
+npm run dev
+```
+
+- `http://localhost:3000/`
 
 H2 console:
 
@@ -64,6 +85,23 @@ H2 console:
 - startup reindex is enabled by default with `app.search.reindex-on-startup=true`
 - product creation writes to DB and Elasticsearch together
 - manual reindex API is available if Elasticsearch starts later than the app
+
+## Front-end stack
+
+- `Next.js App Router` as a separate web app in `frontend/`
+- `TypeScript` for typed API integration
+- `TanStack Query` for server state and mutation flows
+- `Zustand` for shopper session selection
+- `Custom CSS` for a Musinsa-style editorial shell mixed with Zigzag-style fast commerce UI
+
+The web app includes:
+
+- editorial home hero and trend board
+- searchable product catalog
+- product detail page
+- cart and checkout rail
+- order board with refund and delivery demo actions
+- member switcher backed by seeded shoppers
 
 ## Kafka event flow
 
@@ -115,6 +153,12 @@ Content-Type: application/json
 }
 ```
 
+### List members
+
+```http
+GET /api/members
+```
+
 ### Create product
 
 ```http
@@ -148,6 +192,18 @@ Content-Type: application/json
 GET /api/members/1/cart
 ```
 
+### Remove cart item
+
+```http
+DELETE /api/members/1/cart/items/1
+```
+
+### Clear cart
+
+```http
+DELETE /api/members/1/cart/items
+```
+
 ### Checkout with coupon
 
 ```http
@@ -171,6 +227,12 @@ If `paymentReference` contains `FAIL` or `DECLINE`, payment is rejected and a pa
 GET /api/products/search?keyword=denim&page=0&size=10
 ```
 
+### Product detail
+
+```http
+GET /api/products/1
+```
+
 The search targets:
 
 - product name
@@ -181,6 +243,12 @@ The search targets:
 
 ```http
 POST /api/products/search/reindex
+```
+
+### List coupons
+
+```http
+GET /api/coupons
 ```
 
 ### Refund order
@@ -250,6 +318,7 @@ You can inspect captured emails there without using a real SMTP provider.
 - payment amount uses `payAmount` after coupon discount
 - payment failure keeps the cart intact
 - refund restores product stock
+- the separate web app is allowed by CORS from `http://localhost:3000`
 - delivery flow is separated from payment status
 - search uses Elasticsearch full-text `multi_match` query
 - Kafka publishing is executed after transaction commit

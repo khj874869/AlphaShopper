@@ -11,6 +11,7 @@ public record ProductResponse(
         BigDecimal price,
         int stockQuantity,
         String description,
+        String imageUrl,
         boolean active
 ) {
     public static ProductResponse from(Product product) {
@@ -21,8 +22,8 @@ public record ProductResponse(
                 product.getPrice(),
                 product.getStockQuantity(),
                 product.getDescription(),
+                product.getImageUrl(),
                 product.isActive()
         );
     }
 }
-

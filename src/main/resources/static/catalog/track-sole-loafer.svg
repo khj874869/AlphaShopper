@@ -1,0 +1,12 @@
+<svg width="1200" height="1400" viewBox="0 0 1200 1400" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="1400" fill="#ECE6E1"/>
+  <rect x="120" y="110" width="960" height="1180" rx="48" fill="#21242A"/>
+  <path d="M260 790C260 705.47 328.53 637 413 637H728C843.428 637 937 730.572 937 846V920H260V790Z" fill="#8D5D44"/>
+  <rect x="250" y="905" width="710" height="110" rx="36" fill="#D9D4D0"/>
+  <circle cx="415" cy="960" r="22" fill="#7F776F"/>
+  <circle cx="540" cy="960" r="22" fill="#7F776F"/>
+  <circle cx="665" cy="960" r="22" fill="#7F776F"/>
+  <circle cx="790" cy="960" r="22" fill="#7F776F"/>
+  <text x="160" y="1080" fill="white" font-size="72" font-family="Arial, sans-serif" font-weight="700">TRACK SOLE LOAFER</text>
+  <text x="160" y="1160" fill="#CEC2BA" font-size="42" font-family="Arial, sans-serif">Mono Lane / 79,000 KRW</text>
+</svg>

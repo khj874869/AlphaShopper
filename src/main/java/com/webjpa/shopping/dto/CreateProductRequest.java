@@ -8,25 +8,27 @@ import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 
 public record CreateProductRequest(
-        @NotBlank(message = "상품명은 필수입니다.")
-        @Size(max = 120, message = "상품명은 120자 이하여야 합니다.")
+        @NotBlank(message = "Product name is required.")
+        @Size(max = 120, message = "Product name must be 120 characters or less.")
         String name,
 
-        @NotBlank(message = "브랜드명은 필수입니다.")
-        @Size(max = 80, message = "브랜드명은 80자 이하여야 합니다.")
+        @NotBlank(message = "Brand name is required.")
+        @Size(max = 80, message = "Brand name must be 80 characters or less.")
         String brand,
 
-        @NotNull(message = "가격은 필수입니다.")
-        @PositiveOrZero(message = "가격은 0 이상이어야 합니다.")
+        @NotNull(message = "Price is required.")
+        @PositiveOrZero(message = "Price must be zero or greater.")
         BigDecimal price,
 
-        @NotNull(message = "재고 수량은 필수입니다.")
-        @PositiveOrZero(message = "재고 수량은 0 이상이어야 합니다.")
+        @NotNull(message = "Stock quantity is required.")
+        @PositiveOrZero(message = "Stock quantity must be zero or greater.")
         Integer stockQuantity,
 
-        @NotBlank(message = "설명은 필수입니다.")
-        @Size(max = 500, message = "설명은 500자 이하여야 합니다.")
-        String description
+        @NotBlank(message = "Description is required.")
+        @Size(max = 500, message = "Description must be 500 characters or less.")
+        String description,
+
+        @Size(max = 255, message = "Image URL must be 255 characters or less.")
+        String imageUrl
 ) {
 }
-

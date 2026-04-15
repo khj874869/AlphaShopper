@@ -1,0 +1,7 @@
+<svg width="1200" height="1400" viewBox="0 0 1200 1400" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="1400" fill="#EFE8DC"/>
+  <rect x="120" y="110" width="960" height="1180" rx="48" fill="#17191F"/>
+  <circle cx="600" cy="560" r="170" fill="#FF5C39"/>
+  <text x="200" y="1040" fill="white" font-size="80" font-family="Arial, sans-serif" font-weight="700">ALPHASHOPPER</text>
+  <text x="200" y="1135" fill="#F0B9AB" font-size="44" font-family="Arial, sans-serif">Product image placeholder</text>
+</svg>

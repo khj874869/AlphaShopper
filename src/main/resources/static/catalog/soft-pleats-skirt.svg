@@ -1,0 +1,10 @@
+<svg width="1200" height="1400" viewBox="0 0 1200 1400" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="1400" fill="#F4EEDF"/>
+  <rect x="120" y="110" width="960" height="1180" rx="48" fill="#334136"/>
+  <path d="M470 230H730L850 980H350L470 230Z" fill="#C5C2AE"/>
+  <path d="M520 230V980" stroke="#9B977F" stroke-width="24"/>
+  <path d="M600 230V980" stroke="#9B977F" stroke-width="24"/>
+  <path d="M680 230V980" stroke="#9B977F" stroke-width="24"/>
+  <text x="160" y="1080" fill="white" font-size="72" font-family="Arial, sans-serif" font-weight="700">SOFT PLEATS SKIRT</text>
+  <text x="160" y="1160" fill="#D6D1BF" font-size="42" font-family="Arial, sans-serif">Atelier Day / 54,000 KRW</text>
+</svg>

@@ -30,7 +30,8 @@ public class ProductService {
                 request.brand(),
                 request.price(),
                 request.stockQuantity(),
-                request.description()
+                request.description(),
+                request.imageUrl()
         );
 
         Product savedProduct = productRepository.save(product);
@@ -40,6 +41,10 @@ public class ProductService {
 
     public List<ProductResponse> getAll() {
         return productRepository.findAll().stream().map(ProductResponse::from).toList();
+    }
+
+    public ProductResponse get(Long productId) {
+        return ProductResponse.from(getEntity(productId));
     }
 
     public Product getEntity(Long productId) {

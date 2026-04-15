@@ -59,6 +59,10 @@ public class Cart {
         items.clear();
     }
 
+    public void removeItem(Long productId) {
+        items.removeIf(item -> item.getProduct().getId().equals(productId));
+    }
+
     public BigDecimal calculateTotalAmount() {
         return items.stream()
                 .map(CartItem::getLineTotal)

@@ -34,18 +34,22 @@ public class Product {
     @Column(nullable = false, length = 500)
     private String description;
 
+    @Column(length = 255)
+    private String imageUrl;
+
     @Column(nullable = false)
     private boolean active;
 
     protected Product() {
     }
 
-    public Product(String name, String brand, BigDecimal price, int stockQuantity, String description) {
+    public Product(String name, String brand, BigDecimal price, int stockQuantity, String description, String imageUrl) {
         this.name = name;
         this.brand = brand;
         this.price = price;
         this.stockQuantity = stockQuantity;
         this.description = description;
+        this.imageUrl = imageUrl;
         this.active = true;
     }
 
@@ -88,8 +92,11 @@ public class Product {
         return description;
     }
 
+    public String getImageUrl() {
+        return imageUrl;
+    }
+
     public boolean isActive() {
         return active;
     }
 }
-

@@ -9,6 +9,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+
 @Service
 @Transactional(readOnly = true)
 public class CouponService {
@@ -36,6 +38,12 @@ public class CouponService {
         );
 
         return CouponResponse.from(couponRepository.save(coupon));
+    }
+
+    public List<CouponResponse> getAll() {
+        return couponRepository.findAll().stream()
+                .map(CouponResponse::from)
+                .toList();
     }
 
     public Coupon getUsableCoupon(String code) {

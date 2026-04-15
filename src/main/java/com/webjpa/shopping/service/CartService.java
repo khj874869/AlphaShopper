@@ -43,5 +43,20 @@ public class CartService {
         cart.addItem(product, request.quantity());
         return CartResponse.from(cart);
     }
-}
 
+    @Transactional
+    public CartResponse removeItem(Long memberId, Long productId) {
+        memberService.getEntity(memberId);
+        Cart cart = getDetailEntity(memberId);
+        cart.removeItem(productId);
+        return CartResponse.from(cart);
+    }
+
+    @Transactional
+    public CartResponse clear(Long memberId) {
+        memberService.getEntity(memberId);
+        Cart cart = getDetailEntity(memberId);
+        cart.clear();
+        return CartResponse.from(cart);
+    }
+}

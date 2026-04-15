@@ -23,6 +23,9 @@ public class ProductDocument {
     @Field(type = FieldType.Text)
     private String description;
 
+    @Field(type = FieldType.Keyword)
+    private String imageUrl;
+
     @Field(type = FieldType.Double)
     private BigDecimal price;
 
@@ -35,12 +38,13 @@ public class ProductDocument {
     protected ProductDocument() {
     }
 
-    public ProductDocument(Long id, String name, String brand, String description, BigDecimal price, int stockQuantity,
-                           boolean active) {
+    public ProductDocument(Long id, String name, String brand, String description, String imageUrl, BigDecimal price,
+                           int stockQuantity, boolean active) {
         this.id = id;
         this.name = name;
         this.brand = brand;
         this.description = description;
+        this.imageUrl = imageUrl;
         this.price = price;
         this.stockQuantity = stockQuantity;
         this.active = active;
@@ -52,6 +56,7 @@ public class ProductDocument {
                 product.getName(),
                 product.getBrand(),
                 product.getDescription(),
+                product.getImageUrl(),
                 product.getPrice(),
                 product.getStockQuantity(),
                 product.isActive()
@@ -74,6 +79,10 @@ public class ProductDocument {
         return description;
     }
 
+    public String getImageUrl() {
+        return imageUrl;
+    }
+
     public BigDecimal getPrice() {
         return price;
     }
@@ -86,4 +95,3 @@ public class ProductDocument {
         return active;
     }
 }
-

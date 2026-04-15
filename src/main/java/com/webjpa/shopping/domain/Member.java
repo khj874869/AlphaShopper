@@ -3,6 +3,8 @@ package com.webjpa.shopping.domain;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -23,19 +25,28 @@ public class Member {
     @Column(nullable = false, unique = true, length = 100)
     private String email;
 
+    @Column(nullable = false, length = 100)
+    private String password;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private MemberRole role;
+
     @OneToOne(mappedBy = "member", cascade = CascadeType.ALL, orphanRemoval = true)
     private Cart cart;
 
     protected Member() {
     }
 
-    private Member(String name, String email) {
+    private Member(String name, String email, String password, MemberRole role) {
         this.name = name;
         this.email = email;
+        this.password = password;
+        this.role = role;
     }
 
-    public static Member create(String name, String email) {
-        Member member = new Member(name, email);
+    public static Member create(String name, String email, String password, MemberRole role) {
+        Member member = new Member(name, email, password, role);
         Cart cart = Cart.create(member);
         member.cart = cart;
         return member;
@@ -51,6 +62,14 @@ public class Member {
 
     public String getEmail() {
         return email;
+    }
+
+    public String getPassword() {
+        return password;
+    }
+
+    public MemberRole getRole() {
+        return role;
     }
 
     public Cart getCart() {

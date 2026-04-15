@@ -4,8 +4,11 @@ import com.webjpa.shopping.dto.CheckoutRequest;
 import com.webjpa.shopping.dto.OrderResponse;
 import com.webjpa.shopping.dto.RefundRequest;
 import com.webjpa.shopping.dto.UpdateDeliveryRequest;
+import com.webjpa.shopping.security.AccessGuard;
+import com.webjpa.shopping.security.AuthenticatedMember;
 import com.webjpa.shopping.service.OrderService;
 import jakarta.validation.Valid;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -19,24 +22,31 @@ import org.springframework.web.bind.annotation.RestController;
 public class OrderController {
 
     private final OrderService orderService;
+    private final AccessGuard accessGuard;
 
-    public OrderController(OrderService orderService) {
+    public OrderController(OrderService orderService, AccessGuard accessGuard) {
         this.orderService = orderService;
+        this.accessGuard = accessGuard;
     }
 
     @PostMapping("/checkout")
-    public OrderResponse checkout(@Valid @RequestBody CheckoutRequest request) {
+    public OrderResponse checkout(@AuthenticationPrincipal AuthenticatedMember authenticatedMember,
+                                  @Valid @RequestBody CheckoutRequest request) {
+        accessGuard.requireMemberAccess(request.memberId(), authenticatedMember);
         return orderService.checkout(request);
     }
 
     @GetMapping("/{orderId}")
-    public OrderResponse getOrder(@PathVariable Long orderId) {
-        return orderService.getOrder(orderId);
+    public OrderResponse getOrder(@PathVariable Long orderId,
+                                  @AuthenticationPrincipal AuthenticatedMember authenticatedMember) {
+        return orderService.getOrder(orderId, authenticatedMember.memberId(), authenticatedMember.isAdmin());
     }
 
     @PostMapping("/{orderId}/refund")
-    public OrderResponse refund(@PathVariable Long orderId, @Valid @RequestBody RefundRequest request) {
-        return orderService.refund(orderId, request.reason());
+    public OrderResponse refund(@PathVariable Long orderId,
+                                @AuthenticationPrincipal AuthenticatedMember authenticatedMember,
+                                @Valid @RequestBody RefundRequest request) {
+        return orderService.refund(orderId, request.reason(), authenticatedMember.memberId(), authenticatedMember.isAdmin());
     }
 
     @PatchMapping("/{orderId}/delivery")

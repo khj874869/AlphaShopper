@@ -99,8 +99,8 @@ public class OrderService {
         return OrderResponse.from(order);
     }
 
-    public OrderResponse getOrder(Long orderId) {
-        return OrderResponse.from(getDetailOrder(orderId));
+    public OrderResponse getOrder(Long orderId, Long actorMemberId, boolean admin) {
+        return OrderResponse.from(getAccessibleOrder(orderId, actorMemberId, admin));
     }
 
     public List<OrderSummaryResponse> getMemberOrders(Long memberId) {
@@ -111,8 +111,8 @@ public class OrderService {
     }
 
     @Transactional
-    public OrderResponse refund(Long orderId, String reason) {
-        PurchaseOrder order = getDetailOrder(orderId);
+    public OrderResponse refund(Long orderId, String reason, Long actorMemberId, boolean admin) {
+        PurchaseOrder order = getAccessibleOrder(orderId, actorMemberId, admin);
 
         if (order.getStatus() != OrderStatus.PAID) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Only paid orders can be refunded.");
@@ -170,6 +170,14 @@ public class OrderService {
     private PurchaseOrder getDetailOrder(Long orderId) {
         return purchaseOrderRepository.findDetailById(orderId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Order not found. id=" + orderId));
+    }
+
+    private PurchaseOrder getAccessibleOrder(Long orderId, Long actorMemberId, boolean admin) {
+        PurchaseOrder order = getDetailOrder(orderId);
+        if (!admin && !order.getMember().getId().equals(actorMemberId)) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "You do not have access to this order.");
+        }
+        return order;
     }
 
     private void validateStock(Cart cart) {
