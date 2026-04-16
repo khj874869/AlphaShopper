@@ -33,13 +33,13 @@ public class AuthService {
     }
 
     @Transactional
-    public AuthResponse register(CreateMemberRequest request) {
+    public AuthSession register(CreateMemberRequest request) {
         MemberResponse memberResponse = memberService.create(request);
         Member member = memberService.getEntity(memberResponse.id());
-        return new AuthResponse(jwtTokenProvider.createAccessToken(member), memberResponse);
+        return new AuthSession(jwtTokenProvider.createAccessToken(member), new AuthResponse(memberResponse));
     }
 
-    public AuthResponse login(LoginRequest request) {
+    public AuthSession login(LoginRequest request) {
         Member member = memberRepository.findByEmail(request.email())
                 .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "Email or password is invalid."));
 
@@ -47,10 +47,16 @@ public class AuthService {
             throw new ApiException(HttpStatus.UNAUTHORIZED, "Email or password is invalid.");
         }
 
-        return new AuthResponse(jwtTokenProvider.createAccessToken(member), MemberResponse.from(member));
+        return new AuthSession(jwtTokenProvider.createAccessToken(member), new AuthResponse(MemberResponse.from(member)));
     }
 
     public MemberResponse me(Long memberId) {
         return memberService.get(memberId);
+    }
+
+    public record AuthSession(
+            String accessToken,
+            AuthResponse response
+    ) {
     }
 }

@@ -1,14 +1,23 @@
 spring:
+  profiles:
+    active: test
   kafka:
     bootstrap-servers: localhost:9092
     consumer:
       group-id: test-order-notification-group
     listener:
       auto-startup: false
+  jpa:
+    open-in-view: false
 
 app:
   frontend:
     allowed-origins: http://localhost:3000,http://127.0.0.1:3000
+  payment:
+    provider: fake
+  seed:
+    demo-data:
+      enabled: false
   search:
     enabled: false
     reindex-on-startup: false

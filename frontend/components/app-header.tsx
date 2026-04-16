@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { logout } from "@/lib/api";
 import { useSessionStore } from "@/store/session-store";
 
 const navItems = [
@@ -17,10 +18,14 @@ export function AppHeader() {
   const member = useSessionStore((state) => state.member);
   const signOut = useSessionStore((state) => state.signOut);
 
-  const handleLogout = () => {
-    signOut();
-    router.push("/login");
-    router.refresh();
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } finally {
+      signOut();
+      router.push("/login");
+      router.refresh();
+    }
   };
 
   return (
@@ -54,7 +59,7 @@ export function AppHeader() {
               <strong>{member.name}</strong>
               <small>{member.email}</small>
             </div>
-            <button className="button button--ghostDark" onClick={handleLogout}>
+            <button className="button button--ghostDark" onClick={() => void handleLogout()}>
               Logout
             </button>
           </>

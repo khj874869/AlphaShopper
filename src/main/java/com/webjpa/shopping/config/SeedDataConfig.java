@@ -8,6 +8,7 @@ import com.webjpa.shopping.domain.Product;
 import com.webjpa.shopping.repository.CouponRepository;
 import com.webjpa.shopping.repository.MemberRepository;
 import com.webjpa.shopping.repository.ProductRepository;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -19,6 +20,7 @@ import java.time.LocalDateTime;
 public class SeedDataConfig {
 
     @Bean
+    @ConditionalOnProperty(name = "app.seed.demo-data.enabled", havingValue = "true")
     CommandLineRunner seedData(MemberRepository memberRepository,
                                ProductRepository productRepository,
                                CouponRepository couponRepository,

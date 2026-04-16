@@ -53,6 +53,10 @@ public class JwtTokenProvider {
         return parseClaims(token).getSubject();
     }
 
+    public Duration getAccessTokenExpiration() {
+        return accessTokenExpiration;
+    }
+
     private Claims parseClaims(String token) {
         return Jwts.parser()
                 .verifyWith(secretKey)

@@ -6,6 +6,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { addCartItem, getCoupons, getOrders, getProducts, searchProducts } from "@/lib/api";
 import { buildAuthPath } from "@/lib/auth";
 import { formatCurrency } from "@/lib/format";
+import { DEMO_ACCOUNTS_ENABLED } from "@/lib/runtime";
 import { useSessionStore } from "@/store/session-store";
 import { ProductVisual } from "@/components/product-visual";
 import type { ProductResponse } from "@/lib/types";
@@ -93,10 +94,14 @@ export function HomeView() {
         <section className="panel auth-callout">
           <div>
             <p className="eyebrow">Secure shopping</p>
-            <h2>JWT login is now required for cart and order APIs.</h2>
-            <p className="muted">
-              Demo account: <strong>buyer1@zigzag.local / buyer1234</strong>
-            </p>
+            <h2>Secure login is now required for cart and order APIs.</h2>
+            {DEMO_ACCOUNTS_ENABLED ? (
+              <p className="muted">
+                Demo account: <strong>buyer1@zigzag.local / buyer1234</strong>
+              </p>
+            ) : (
+              <p className="muted">Sign in with a shopper account to use cart and order features.</p>
+            )}
           </div>
           <Link className="button button--dark" href={buildAuthPath({ next: "/cart" })}>
             Open login

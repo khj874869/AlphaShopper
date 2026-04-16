@@ -3,10 +3,12 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { checkout, clearCart, getCart, getCoupons, removeCartItem } from "@/lib/api";
+import { checkout, clearCart, getCart, getCoupons, prepareCheckout, removeCartItem } from "@/lib/api";
 import { buildAuthPath } from "@/lib/auth";
 import { formatCurrency } from "@/lib/format";
+import { DEMO_ACCOUNTS_ENABLED, PAYMENT_PROVIDER } from "@/lib/runtime";
 import { useSessionStore } from "@/store/session-store";
+import type { OrderResponse, PrepareCheckoutResponse } from "@/lib/types";
 
 const paymentMethods = ["CARD", "KAKAO_PAY", "NAVER_PAY", "BANK_TRANSFER"] as const;
 
@@ -15,8 +17,9 @@ export function CartCheckoutView() {
   const queryClient = useQueryClient();
   const [couponCode, setCouponCode] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<(typeof paymentMethods)[number]>("CARD");
-  const [paymentReference, setPaymentReference] = useState("CARD-OK-001");
+  const [paymentReference, setPaymentReference] = useState("ORDER-REFERENCE-001");
   const [shippingAddress, setShippingAddress] = useState("Seoul Seongsu-ro 00");
+  const isHostedCheckout = PAYMENT_PROVIDER === "toss";
 
   const { data: cart } = useQuery({
     queryKey: ["cart", member?.id],
@@ -29,16 +32,28 @@ export function CartCheckoutView() {
     enabled: Boolean(member?.id)
   });
 
-  const checkoutMutation = useMutation({
+  const checkoutMutation = useMutation<PrepareCheckoutResponse | OrderResponse>({
     mutationFn: () =>
-      checkout({
-        memberId: member!.id,
-        paymentMethod,
-        paymentReference,
-        shippingAddress,
-        couponCode: couponCode || null
-      }),
-    onSuccess: () => {
+      isHostedCheckout
+        ? prepareCheckout({
+            memberId: member!.id,
+            paymentMethod,
+            shippingAddress,
+            couponCode: couponCode || null
+          })
+        : checkout({
+            memberId: member!.id,
+            paymentMethod,
+            paymentReference,
+            shippingAddress,
+            couponCode: couponCode || null
+          }),
+    onSuccess: (response) => {
+      if (isHostedCheckout && "checkoutUrl" in response) {
+        window.location.assign(response.checkoutUrl);
+        return;
+      }
+
       void queryClient.invalidateQueries({ queryKey: ["cart", member?.id] });
       void queryClient.invalidateQueries({ queryKey: ["orders", member?.id] });
     }
@@ -59,7 +74,7 @@ export function CartCheckoutView() {
   });
 
   const hasItems = Boolean(cart?.items.length);
-  const checkoutResult = checkoutMutation.data;
+  const checkoutResult = !isHostedCheckout && checkoutMutation.data && "orderId" in checkoutMutation.data ? checkoutMutation.data : null;
 
   const estimatedPayAmount = useMemo(() => {
     if (!cart) {
@@ -74,7 +89,11 @@ export function CartCheckoutView() {
         <div>
           <p className="eyebrow">Protected cart</p>
           <h1>Login is required before using the cart or checkout flow.</h1>
-          <p className="muted">Demo account: buyer1@zigzag.local / buyer1234</p>
+          <p className="muted">
+            {DEMO_ACCOUNTS_ENABLED
+              ? "Demo account: buyer1@zigzag.local / buyer1234"
+              : "Sign in first to access the protected cart and checkout flow."}
+          </p>
         </div>
         <div className="auth-actions">
           <Link className="button button--dark" href={buildAuthPath({ next: "/cart" })}>
@@ -147,10 +166,12 @@ export function CartCheckoutView() {
               ))}
             </select>
           </label>
-          <label className="field">
-            <span>Payment reference</span>
-            <input value={paymentReference} onChange={(event) => setPaymentReference(event.target.value)} />
-          </label>
+          {!isHostedCheckout ? (
+            <label className="field">
+              <span>Payment reference</span>
+              <input value={paymentReference} onChange={(event) => setPaymentReference(event.target.value)} />
+            </label>
+          ) : null}
           <label className="field">
             <span>Coupon</span>
             <select value={couponCode} onChange={(event) => setCouponCode(event.target.value)}>
@@ -169,12 +190,14 @@ export function CartCheckoutView() {
               <strong>{formatCurrency(estimatedPayAmount)}</strong>
             </div>
             <p className="muted">
-              Put <code>FAIL</code> or <code>DECLINE</code> in the payment reference to force a failed payment case.
+              {isHostedCheckout
+                ? "You will be redirected to the Toss Payments checkout window and returned after authentication."
+                : "Payment reference should match the identifier issued by your payment provider."}
             </p>
           </div>
 
           <button className="button button--dark button--block" disabled={!hasItems || checkoutMutation.isPending} onClick={() => checkoutMutation.mutate()}>
-            Run checkout
+            {isHostedCheckout ? "Open payment window" : "Run checkout"}
           </button>
 
           {checkoutResult ? (

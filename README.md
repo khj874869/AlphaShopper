@@ -2,6 +2,18 @@
 
 Spring Boot + JPA shopping system with a separate Next.js web app, Elasticsearch product search, Kafka event processing, and mail notifications.
 
+## Deployment Status
+
+This repository now separates `local` and `prod` profiles.
+
+- `local` keeps the demo stack: H2, seeded users, Mailpit, fake payment gateway
+- `local,toss-local` keeps the local stack but switches checkout to Toss test-key flow
+- `prod` is hardened to require external infrastructure and to reject demo-safe defaults
+- `prod` intentionally does not allow the fake payment gateway and is wired for Toss Payments
+
+The project now includes a Toss Payments hosted checkout implementation for production profile deployments.
+It now also includes Flyway-managed relational schema migrations and server-side Toss webhook reconciliation for approved, canceled, and failed payments.
+
 Implemented features:
 
 - member creation
@@ -26,12 +38,14 @@ Implemented features:
 - Spring Data Elasticsearch
 - Spring Kafka
 - Spring Mail
+- Spring Boot Actuator
 - Next.js App Router
 - TypeScript
 - TanStack Query
 - Zustand
 - Custom responsive CSS
 - H2 database
+- PostgreSQL
 - Apache Kafka 3.9.1
 - Elasticsearch 8.11.1
 - Kibana 8.11.1
@@ -53,6 +67,8 @@ Services:
 
 ## Run application
 
+### Local profile with fake payment gateway
+
 ```bash
 ./mvnw spring-boot:run
 ```
@@ -71,18 +87,76 @@ npm run dev
 ```
 
 - `http://localhost:3000/`
+- health check: `http://localhost:8080/actuator/health`
 
-H2 console:
+H2 console in local only:
 
 - `http://localhost:8080/h2-console`
 - JDBC URL: `jdbc:h2:mem:zigzagshop`
 - Username: `sa`
 - Password: empty
 
+### Local profile with Toss test key
+
+1. Copy [.env.toss.local.example](/abs/path/C:/Users/S-P-041/Downloads/webjpa/.env.toss.local.example) to `.env.toss.local`.
+2. Copy [frontend/.env.toss.local.example](/abs/path/C:/Users/S-P-041/Downloads/webjpa/frontend/.env.toss.local.example) to `frontend/.env.toss.local`.
+3. Replace `APP_PAYMENT_TOSS_SECRET_KEY` in `.env.toss.local` with your Toss test secret key.
+4. Run the preflight check:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\preflight-toss-local.ps1
+```
+
+5. Start the backend:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\start-toss-local-backend.ps1
+```
+
+6. Start the frontend:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\start-toss-local-frontend.ps1
+```
+
+This mode keeps:
+
+- H2
+- Mailpit
+- seeded local demo accounts
+- local storefront URLs
+- backend port `18080`
+
+This mode changes:
+
+- checkout button opens Toss hosted payment window
+- success redirect returns to `/payments/toss/success`
+- failure redirect returns to `/payments/toss/fail`
+- Elasticsearch product search is disabled by default to keep the minimum local Toss path lightweight
+- Kafka auto topic creation and listener startup are disabled by default for the same reason
+
+### Production profile
+
+1. Copy [.env.production.example](/abs/path/C:/Users/S-P-041/Downloads/webjpa/.env.production.example) to your deployment secret store or hosting platform env configuration.
+2. Set `SPRING_PROFILES_ACTIVE=prod`.
+3. Set Toss Payments credentials, storefront URL, and secure auth cookie settings using `APP_PAYMENT_TOSS_SECRET_KEY`, `APP_FRONTEND_BASE_URL`, and `APP_AUTH_COOKIE_SECURE=true`.
+4. Copy [frontend/.env.production.example](/abs/path/C:/Users/S-P-041/Downloads/webjpa/frontend/.env.production.example) into your front-end deployment environment.
+5. Build backend with `./mvnw clean package` and frontend with `cd frontend && npm run build`.
+
+Production guards:
+
+- startup fails if `prod` still uses the local JWT secret
+- startup fails if demo seed data is enabled in `prod`
+- startup fails if `prod` CORS still contains `localhost`
+- startup fails if `prod` still uses a local storefront base URL
+- startup fails if `prod` points at in-memory H2
+- startup fails if `prod` still tries to use the fake payment provider
+- startup fails if Toss provider is enabled without a secret key
+
 ## Search index behavior
 
 - product documents are stored in Elasticsearch index `products`
-- startup reindex is enabled by default with `app.search.reindex-on-startup=true`
+- local startup reindex is enabled by default with `app.search.reindex-on-startup=true`
 - product creation writes to DB and Elasticsearch together
 - manual reindex API is available if Elasticsearch starts later than the app
 
@@ -100,8 +174,35 @@ The web app includes:
 - searchable product catalog
 - product detail page
 - cart and checkout rail
-- order board with refund and delivery demo actions
-- member switcher backed by seeded shoppers
+- order board with refund and delivery actions
+- optional demo account shortcuts in local front-end env only
+- Toss Payments success and failure return pages for hosted checkout
+
+## Toss Payments flow
+
+Production checkout uses Toss Payments server-to-server payment window creation plus server confirmation.
+
+Flow:
+
+1. `POST /api/orders/checkout/prepare` creates a pending order and requests a Toss checkout URL.
+2. The browser moves to Toss Payments hosted checkout.
+3. Toss redirects the shopper to `/payments/toss/success` or `/payments/toss/fail`.
+4. The front-end calls `POST /api/orders/checkout/confirm` or `POST /api/orders/checkout/fail`.
+5. The backend finalizes order state and uses the stored `paymentKey` for refunds.
+6. Toss webhooks can reconcile `DONE`, `CANCELED`, `ABORTED`, and `EXPIRED` events if the browser redirect is delayed or interrupted.
+
+Required production settings:
+
+- `APP_PAYMENT_PROVIDER=toss`
+- `APP_PAYMENT_TOSS_SECRET_KEY`
+- `APP_FRONTEND_BASE_URL`
+- `APP_AUTH_COOKIE_SECURE=true`
+- `NEXT_PUBLIC_PAYMENT_PROVIDER=toss`
+
+For local Toss testing, use:
+
+- [.env.toss.local.example](/abs/path/C:/Users/S-P-041/Downloads/webjpa/.env.toss.local.example)
+- [frontend/.env.toss.local.example](/abs/path/C:/Users/S-P-041/Downloads/webjpa/frontend/.env.toss.local.example)
 
 ## Kafka event flow
 
@@ -128,6 +229,8 @@ Notification triggers:
 - delivery completed: `ORDER_DELIVERED`
 
 ## Seed data
+
+Seed data exists in the `local` profile only.
 
 Members:
 
@@ -206,6 +309,8 @@ DELETE /api/members/1/cart/items
 
 ### Checkout with coupon
 
+Local fake payment flow:
+
 ```http
 POST /api/orders/checkout
 Content-Type: application/json
@@ -219,7 +324,40 @@ Content-Type: application/json
 }
 ```
 
-If `paymentReference` contains `FAIL` or `DECLINE`, payment is rejected and a payment failure event is published.
+In the local demo profile, if `paymentReference` contains `FAIL` or `DECLINE`, payment is rejected and a payment failure event is published.
+
+### Prepare Toss checkout
+
+```http
+POST /api/orders/checkout/prepare
+Content-Type: application/json
+
+{
+  "memberId": 1,
+  "paymentMethod": "NAVER_PAY",
+  "shippingAddress": "Seoul Seongsu-ro 00",
+  "couponCode": "WELCOME10"
+}
+```
+
+For the minimum public `test_sk` path, prefer `CARD` or `NAVER_PAY`.
+
+- Official FAQ says Toss Pay and Naver Pay can be tested with general test keys.
+- Official FAQ says Kakao Pay needs a merchant-specific test key issued after contract.
+
+### Confirm Toss checkout
+
+```http
+POST /api/orders/checkout/confirm
+Content-Type: application/json
+
+{
+  "memberId": 1,
+  "providerOrderId": "order_1234567890abcdef",
+  "paymentKey": "payment-key-from-toss",
+  "amount": 54000
+}
+```
 
 ### Search products
 
@@ -306,6 +444,8 @@ Content-Type: application/json
 
 ## Mail verification
 
+Local demo flow only.
+
 After checkout, refund, or delivery updates, open:
 
 - `http://localhost:8025`
@@ -318,11 +458,14 @@ You can inspect captured emails there without using a real SMTP provider.
 - payment amount uses `payAmount` after coupon discount
 - payment failure keeps the cart intact
 - refund restores product stock
-- the separate web app is allowed by CORS from `http://localhost:3000`
+- local CORS allows `http://localhost:3000`
 - delivery flow is separated from payment status
 - search uses Elasticsearch full-text `multi_match` query
 - Kafka publishing is executed after transaction commit
 - mail sending is decoupled from order logic through Kafka
+- backend health endpoint is exposed at `/actuator/health`
+- auth is now issued through an HttpOnly cookie instead of exposing the access token to the browser app
+- relational schema is now managed through Flyway migrations instead of Hibernate `create-drop`
 - real production search would usually add aliases, analyzers, zero-downtime reindexing, and sync retry handling
 - real production Kafka would usually add retry topics, dead-letter topics, and observability
 - real production PG integration would need idempotency, outbox, and compensation handling

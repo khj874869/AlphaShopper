@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useMutation } from "@tanstack/react-query";
 import { login, register } from "@/lib/api";
 import { buildAuthPath, formatNextLabel, sanitizeNextPath } from "@/lib/auth";
+import { DEMO_ACCOUNTS_ENABLED } from "@/lib/runtime";
 import { useSessionStore } from "@/store/session-store";
 
 const demoAccounts = [
@@ -44,10 +45,11 @@ export function LoginPanel({
   const nextPath = sanitizeNextPath(initialNext);
   const targetLabel = formatNextLabel(nextPath);
   const resolvedMode = initialMode === "register" ? "register" : "login";
+  const initialDemoAccount = DEMO_ACCOUNTS_ENABLED ? demoAccounts[0] : null;
 
   const [mode, setMode] = useState<AuthMode>(resolvedMode);
-  const [email, setEmail] = useState<string>(demoAccounts[0].email);
-  const [password, setPassword] = useState<string>(demoAccounts[0].password);
+  const [email, setEmail] = useState<string>(initialDemoAccount?.email ?? "");
+  const [password, setPassword] = useState<string>(initialDemoAccount?.password ?? "");
   const [registerName, setRegisterName] = useState("");
   const [registerEmail, setRegisterEmail] = useState("");
   const [registerPassword, setRegisterPassword] = useState("");
@@ -67,7 +69,7 @@ export function LoginPanel({
   const loginMutation = useMutation({
     mutationFn: login,
     onSuccess: (response) => {
-      signIn(response.accessToken, response.member);
+      signIn(response.member);
       router.push(nextPath);
       router.refresh();
     }
@@ -76,7 +78,7 @@ export function LoginPanel({
   const registerMutation = useMutation({
     mutationFn: register,
     onSuccess: (response) => {
-      signIn(response.accessToken, response.member);
+      signIn(response.member);
       router.push(nextPath);
       router.refresh();
     }
@@ -152,36 +154,40 @@ export function LoginPanel({
           <p className="eyebrow">AlphaShopper account</p>
           <h1>Login, signup, cart and checkout now move as one clean flow.</h1>
           <p>
-            JWT session handling is active. Signup now validates basic mistakes before submit and the error messages are
-            shown in plain language.
+            Session auth now uses a secure server cookie, while signup still validates common mistakes before submit and
+            shows the errors in plain language.
           </p>
         </div>
 
-        <div className="auth-demo-grid">
-          {demoAccounts.map((account) => (
-            <button
-              key={account.email}
-              className="auth-demo-card"
-              onClick={() => {
-                switchMode("login");
-                setEmail(account.email);
-                setPassword(account.password);
-              }}
-              type="button"
-            >
-              <span>{account.label}</span>
-              <strong>{account.email}</strong>
-              <small>{account.note}</small>
-            </button>
-          ))}
-        </div>
+        {DEMO_ACCOUNTS_ENABLED ? (
+          <div className="auth-demo-grid">
+            {demoAccounts.map((account) => (
+              <button
+                key={account.email}
+                className="auth-demo-card"
+                onClick={() => {
+                  switchMode("login");
+                  setEmail(account.email);
+                  setPassword(account.password);
+                }}
+                type="button"
+              >
+                <span>{account.label}</span>
+                <strong>{account.email}</strong>
+                <small>{account.note}</small>
+              </button>
+            ))}
+          </div>
+        ) : null}
 
-        <div className="auth-note">
-          <strong>Demo passwords</strong>
-          <p>
-            Buyer accounts use <code>buyer1234</code>. Admin uses <code>admin1234</code>.
-          </p>
-        </div>
+        {DEMO_ACCOUNTS_ENABLED ? (
+          <div className="auth-note">
+            <strong>Demo passwords</strong>
+            <p>
+              Buyer accounts use <code>buyer1234</code>. Admin uses <code>admin1234</code>.
+            </p>
+          </div>
+        ) : null}
 
         {nextPath !== "/" ? (
           <div className="auth-note auth-note--intent">
@@ -222,7 +228,7 @@ export function LoginPanel({
               <span>Email</span>
               <input
                 autoComplete="email"
-                placeholder="buyer1@zigzag.local"
+                placeholder="you@example.com"
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
               />
@@ -242,7 +248,11 @@ export function LoginPanel({
               {loginMutation.isPending ? "Signing in..." : "Login"}
             </button>
 
-            <p className="form-helper">Use the demo cards on the left for instant account fill-in.</p>
+            <p className="form-helper">
+              {DEMO_ACCOUNTS_ENABLED
+                ? "Use the demo cards on the left for instant account fill-in."
+                : "Use your shopper account email and password."}
+            </p>
             {nextPath !== "/" ? (
               <p className="form-helper">
                 After login you will move to the {targetLabel}. Need a new account instead?{" "}

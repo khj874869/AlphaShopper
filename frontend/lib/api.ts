@@ -3,35 +3,44 @@ import type {
   ApiErrorResponse,
   AuthResponse,
   CartResponse,
+  CheckoutFailureReportRequest,
   CheckoutRequest,
+  ConfirmCheckoutRequest,
   CouponResponse,
   LoginRequest,
   MemberResponse,
   OrderResponse,
   OrderSummaryResponse,
+  PrepareCheckoutRequest,
+  PrepareCheckoutResponse,
   ProductResponse,
   ProductSearchPageResponse,
   RegisterRequest,
   RefundRequest,
   UpdateDeliveryRequest
 } from "@/lib/types";
-import { useSessionStore } from "@/store/session-store";
+import { API_BASE_URL } from "@/lib/runtime";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080";
+type ApiFetchOptions = RequestInit & {
+  allowUnauthorized?: boolean;
+};
 
-async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
-  const accessToken = useSessionStore.getState().accessToken;
+async function apiFetch<T>(path: string, init?: ApiFetchOptions): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...init,
+    credentials: "include",
     headers: {
       "Content-Type": "application/json",
-      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
       ...(init?.headers ?? {})
     },
     cache: "no-store"
   });
 
   if (!response.ok) {
+    if (init?.allowUnauthorized && response.status === 401) {
+      return null as T;
+    }
+
     const errorMessage = await extractErrorMessage(response);
     throw new Error(errorMessage);
   }
@@ -69,8 +78,16 @@ export function register(payload: RegisterRequest) {
   });
 }
 
-export function getMyProfile() {
-  return apiFetch<MemberResponse>("/api/auth/me");
+export function logout() {
+  return apiFetch<void>("/api/auth/logout", {
+    method: "POST"
+  });
+}
+
+export function getSessionProfile() {
+  return apiFetch<MemberResponse | null>("/api/auth/me", {
+    allowUnauthorized: true
+  });
 }
 
 export function getMembers() {
@@ -123,6 +140,27 @@ export function clearCart(memberId: number) {
 
 export function checkout(payload: CheckoutRequest) {
   return apiFetch<OrderResponse>("/api/orders/checkout", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export function prepareCheckout(payload: PrepareCheckoutRequest) {
+  return apiFetch<PrepareCheckoutResponse>("/api/orders/checkout/prepare", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export function confirmCheckout(payload: ConfirmCheckoutRequest) {
+  return apiFetch<OrderResponse>("/api/orders/checkout/confirm", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export function reportCheckoutFailure(payload: CheckoutFailureReportRequest) {
+  return apiFetch<void>("/api/orders/checkout/fail", {
     method: "POST",
     body: JSON.stringify(payload)
   });

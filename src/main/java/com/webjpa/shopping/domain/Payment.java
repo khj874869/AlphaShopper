@@ -38,7 +38,7 @@ public class Payment {
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal amount;
 
-    @Column(length = 100)
+    @Column(length = 200)
     private String transactionKey;
 
     @Column(length = 100)

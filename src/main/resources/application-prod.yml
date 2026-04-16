@@ -1,0 +1,58 @@
+spring:
+  datasource:
+    url: ${DB_URL}
+    driver-class-name: org.postgresql.Driver
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+  h2:
+    console:
+      enabled: false
+  thymeleaf:
+    cache: true
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        format_sql: false
+  elasticsearch:
+    uris: ${ELASTICSEARCH_URL}
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      properties:
+        spring.json.add.type.headers: false
+    consumer:
+      group-id: ${KAFKA_CONSUMER_GROUP_ID:zigzag-notification-consumer}
+      auto-offset-reset: latest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: com.webjpa.shopping.messaging
+        spring.json.value.default.type: com.webjpa.shopping.messaging.OrderNotificationMessage
+    listener:
+      missing-topics-fatal: false
+  mail:
+    host: ${SMTP_HOST}
+    port: ${SMTP_PORT:587}
+    username: ${SMTP_USERNAME}
+    password: ${SMTP_PASSWORD}
+    properties:
+      mail.smtp.auth: ${SMTP_AUTH:true}
+      mail.smtp.starttls.enable: ${SMTP_STARTTLS_ENABLE:true}
+      mail.smtp.connectiontimeout: 5000
+      mail.smtp.timeout: 3000
+      mail.smtp.writetimeout: 5000
+
+logging:
+  level:
+    org.hibernate.SQL: warn
+
+app:
+  seed:
+    demo-data:
+      enabled: false
+  payment:
+    provider: ${APP_PAYMENT_PROVIDER:toss}

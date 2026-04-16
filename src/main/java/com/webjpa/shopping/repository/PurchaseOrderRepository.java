@@ -23,6 +23,16 @@ public interface PurchaseOrderRepository extends JpaRepository<PurchaseOrder, Lo
     @Query("""
             select distinct o
             from PurchaseOrder o
+            left join fetch o.items
+            left join fetch o.payment
+            left join fetch o.member
+            where o.payment.paymentReference = :providerOrderId
+            """)
+    Optional<PurchaseOrder> findDetailByProviderOrderId(@Param("providerOrderId") String providerOrderId);
+
+    @Query("""
+            select distinct o
+            from PurchaseOrder o
             left join fetch o.payment
             where o.member.id = :memberId
             order by o.orderedAt desc

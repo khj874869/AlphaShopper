@@ -42,7 +42,7 @@ export function ProductDetailView({ productId }: { productId: number }) {
               <strong>{product.stockQuantity}</strong>
             </article>
             <article>
-              <span>JWT checkout</span>
+              <span>Secure checkout</span>
               <strong>{member ? "ready" : "login required"}</strong>
             </article>
           </div>

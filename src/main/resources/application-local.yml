@@ -1,0 +1,59 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:zigzagshop;MODE=MySQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  h2:
+    console:
+      enabled: true
+  thymeleaf:
+    cache: false
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        format_sql: true
+  elasticsearch:
+    uris: http://localhost:9200
+  kafka:
+    bootstrap-servers: localhost:9092
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      properties:
+        spring.json.add.type.headers: false
+    consumer:
+      group-id: zigzag-notification-consumer
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: com.webjpa.shopping.messaging
+        spring.json.value.default.type: com.webjpa.shopping.messaging.OrderNotificationMessage
+  mail:
+    host: localhost
+    port: 1025
+    properties:
+      mail.smtp.auth: false
+      mail.smtp.starttls.enable: false
+      mail.smtp.connectiontimeout: 5000
+      mail.smtp.timeout: 3000
+      mail.smtp.writetimeout: 5000
+
+logging:
+  level:
+    org.hibernate.SQL: debug
+
+app:
+  search:
+    enabled: true
+    reindex-on-startup: true
+  kafka:
+    auto-create-topics: true
+  seed:
+    demo-data:
+      enabled: true
+  payment:
+    provider: fake

@@ -21,7 +21,7 @@ export function OrdersBoardView() {
   };
 
   const refundMutation = useMutation({
-    mutationFn: (orderId: number) => refundOrder(orderId, { reason: "Web app refund demo" }),
+    mutationFn: (orderId: number) => refundOrder(orderId, { reason: "Customer requested refund" }),
     onSuccess: refresh
   });
 

@@ -23,7 +23,6 @@ public record OrderNotificationRequested(
                 LocalDateTime.now()
         ));
     }
-
     private static String buildProductSummary(PurchaseOrder order) {
         if (order.getItems().isEmpty()) {
             return "No items";

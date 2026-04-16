@@ -1,7 +1,11 @@
 package com.webjpa.shopping.controller;
 
+import com.webjpa.shopping.dto.CheckoutFailureReportRequest;
 import com.webjpa.shopping.dto.CheckoutRequest;
+import com.webjpa.shopping.dto.ConfirmCheckoutRequest;
 import com.webjpa.shopping.dto.OrderResponse;
+import com.webjpa.shopping.dto.PrepareCheckoutRequest;
+import com.webjpa.shopping.dto.PrepareCheckoutResponse;
 import com.webjpa.shopping.dto.RefundRequest;
 import com.webjpa.shopping.dto.UpdateDeliveryRequest;
 import com.webjpa.shopping.security.AccessGuard;
@@ -27,6 +31,27 @@ public class OrderController {
     public OrderController(OrderService orderService, AccessGuard accessGuard) {
         this.orderService = orderService;
         this.accessGuard = accessGuard;
+    }
+
+    @PostMapping("/checkout/prepare")
+    public PrepareCheckoutResponse prepareCheckout(@AuthenticationPrincipal AuthenticatedMember authenticatedMember,
+                                                   @Valid @RequestBody PrepareCheckoutRequest request) {
+        accessGuard.requireMemberAccess(request.memberId(), authenticatedMember);
+        return orderService.prepareCheckout(request);
+    }
+
+    @PostMapping("/checkout/confirm")
+    public OrderResponse confirmCheckout(@AuthenticationPrincipal AuthenticatedMember authenticatedMember,
+                                         @Valid @RequestBody ConfirmCheckoutRequest request) {
+        accessGuard.requireMemberAccess(request.memberId(), authenticatedMember);
+        return orderService.confirmCheckout(request, authenticatedMember.memberId(), authenticatedMember.isAdmin());
+    }
+
+    @PostMapping("/checkout/fail")
+    public void markCheckoutFailed(@AuthenticationPrincipal AuthenticatedMember authenticatedMember,
+                                   @Valid @RequestBody CheckoutFailureReportRequest request) {
+        accessGuard.requireMemberAccess(request.memberId(), authenticatedMember);
+        orderService.markCheckoutFailed(request, authenticatedMember.memberId(), authenticatedMember.isAdmin());
     }
 
     @PostMapping("/checkout")

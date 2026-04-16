@@ -6,7 +6,6 @@ export type MemberResponse = {
 };
 
 export type AuthResponse = {
-  accessToken: string;
   member: MemberResponse;
 };
 
@@ -93,6 +92,34 @@ export type CheckoutRequest = {
   paymentReference: string;
   shippingAddress: string;
   couponCode: string | null;
+};
+
+export type PrepareCheckoutRequest = {
+  memberId: number;
+  paymentMethod: PaymentMethod;
+  shippingAddress: string;
+  couponCode: string | null;
+};
+
+export type PrepareCheckoutResponse = {
+  provider: string;
+  providerOrderId: string;
+  checkoutUrl: string;
+  amount: number;
+};
+
+export type ConfirmCheckoutRequest = {
+  memberId: number;
+  providerOrderId: string;
+  paymentKey: string;
+  amount: number;
+};
+
+export type CheckoutFailureReportRequest = {
+  memberId: number;
+  providerOrderId: string;
+  errorCode: string | null;
+  errorMessage: string | null;
 };
 
 export type PaymentResponse = {

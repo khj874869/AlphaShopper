@@ -36,7 +36,9 @@ public class SecurityConfig {
                 .exceptionHandling(exception -> exception.authenticationEntryPoint(restAuthenticationEntryPoint))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/", "/error", "/catalog/**", "/css/**", "/js/**", "/images/**").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/auth/login", "/api/auth/register", "/api/members").permitAll()
+                        .requestMatchers("/actuator/health", "/actuator/info").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/auth/login", "/api/auth/register", "/api/auth/logout", "/api/members").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/payments/toss/webhooks").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/products/**", "/api/coupons").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/products", "/api/products/search/reindex").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PATCH, "/api/orders/*/delivery").hasRole("ADMIN")
@@ -59,8 +61,7 @@ public class SecurityConfig {
                 .toList());
         configuration.setAllowedMethods(List.of("GET", "POST", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
-        configuration.setExposedHeaders(List.of("Authorization"));
-        configuration.setAllowCredentials(false);
+        configuration.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);

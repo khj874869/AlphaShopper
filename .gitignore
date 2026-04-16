@@ -14,3 +14,6 @@ backend.run.out.log
 backend.run.err.log
 frontend.run.out.log
 frontend.run.err.log
+.env.toss.local
+frontend/.env.toss.local
+frontend/.env.local

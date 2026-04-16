@@ -55,7 +55,7 @@ public class Product {
 
     public void decreaseStock(int quantity) {
         if (stockQuantity < quantity) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "재고가 부족합니다. productId=" + id);
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Insufficient stock. productId=" + id);
         }
         this.stockQuantity -= quantity;
     }
