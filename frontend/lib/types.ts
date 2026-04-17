@@ -9,6 +9,11 @@ export type AuthResponse = {
   member: MemberResponse;
 };
 
+export type CsrfResponse = {
+  headerName: string;
+  token: string;
+};
+
 export type LoginRequest = {
   email: string;
   password: string;

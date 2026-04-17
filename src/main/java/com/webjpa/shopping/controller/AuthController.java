@@ -11,12 +11,15 @@ import jakarta.validation.Valid;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -51,6 +54,14 @@ public class AuthController {
         return ResponseEntity.noContent()
                 .header(HttpHeaders.SET_COOKIE, authCookieService.clearAccessTokenCookie().toString())
                 .build();
+    }
+
+    @GetMapping("/csrf")
+    public Map<String, String> csrf(CsrfToken csrfToken) {
+        return Map.of(
+                "headerName", csrfToken.getHeaderName(),
+                "token", csrfToken.getToken()
+        );
     }
 
     @GetMapping("/me")

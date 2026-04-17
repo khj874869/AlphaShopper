@@ -21,11 +21,16 @@ public class FakePaymentGateway implements PaymentGateway {
         String normalizedReference = paymentReference == null ? "" : paymentReference.toUpperCase();
 
         if (normalizedReference.contains("FAIL") || normalizedReference.contains("DECLINE")) {
-            return new PaymentResult(false, null, "결제가 거절되었습니다. paymentReference=" + paymentReference);
+            return new PaymentResult(false, null, "Payment was declined. paymentReference=" + paymentReference);
         }
 
         String transactionKey = paymentMethod.name() + "-" + providerOrderId + "-" + UUID.randomUUID().toString().substring(0, 8);
         return new PaymentResult(true, transactionKey, "APPROVED");
+    }
+
+    @Override
+    public PaymentLookupResult getPayment(String transactionKey) {
+        throw new UnsupportedOperationException("Fake payment gateway does not support payment lookup.");
     }
 
     @Override

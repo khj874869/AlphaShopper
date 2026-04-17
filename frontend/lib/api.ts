@@ -7,6 +7,7 @@ import type {
   CheckoutRequest,
   ConfirmCheckoutRequest,
   CouponResponse,
+  CsrfResponse,
   LoginRequest,
   MemberResponse,
   OrderResponse,
@@ -23,14 +24,17 @@ import { API_BASE_URL } from "@/lib/runtime";
 
 type ApiFetchOptions = RequestInit & {
   allowUnauthorized?: boolean;
+  skipCsrf?: boolean;
 };
 
 async function apiFetch<T>(path: string, init?: ApiFetchOptions): Promise<T> {
+  const csrfHeaders = init?.skipCsrf || isSafeMethod(init?.method) ? {} : await getCsrfHeaders();
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...init,
     credentials: "include",
     headers: {
       "Content-Type": "application/json",
+      ...csrfHeaders,
       ...(init?.headers ?? {})
     },
     cache: "no-store"
@@ -67,6 +71,7 @@ export function getAssetUrl(path: string | null | undefined) {
 export function login(payload: LoginRequest) {
   return apiFetch<AuthResponse>("/api/auth/login", {
     method: "POST",
+    skipCsrf: true,
     body: JSON.stringify(payload)
   });
 }
@@ -74,13 +79,15 @@ export function login(payload: LoginRequest) {
 export function register(payload: RegisterRequest) {
   return apiFetch<AuthResponse>("/api/auth/register", {
     method: "POST",
+    skipCsrf: true,
     body: JSON.stringify(payload)
   });
 }
 
 export function logout() {
   return apiFetch<void>("/api/auth/logout", {
-    method: "POST"
+    method: "POST",
+    skipCsrf: true
   });
 }
 
@@ -200,4 +207,17 @@ async function extractErrorMessage(response: Response) {
 
   const errorText = await response.text().catch(() => "");
   return errorText || `Request failed: ${response.status}`;
+}
+
+async function getCsrfHeaders() {
+  const csrf = await apiFetch<CsrfResponse>("/api/auth/csrf", {
+    method: "GET",
+    skipCsrf: true
+  });
+  return { [csrf.headerName]: csrf.token };
+}
+
+function isSafeMethod(method: string | undefined) {
+  const normalized = method?.toUpperCase() ?? "GET";
+  return normalized === "GET" || normalized === "HEAD" || normalized === "OPTIONS";
 }

@@ -35,4 +35,3 @@ public record OrderNotificationRequested(
         return order.getItems().get(0).getProductName() + " and " + (order.getItems().size() - 1) + " more";
     }
 }
-

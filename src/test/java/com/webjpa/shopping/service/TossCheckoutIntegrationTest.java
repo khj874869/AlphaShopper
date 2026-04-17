@@ -138,6 +138,14 @@ class TossCheckoutIntegrationTest {
         ));
 
         reset(paymentGateway, orderNotificationEventPublisher);
+        when(paymentGateway.getPayment("payment-key-002"))
+                .thenReturn(new PaymentGateway.PaymentLookupResult(
+                        "payment-key-002",
+                        prepared.providerOrderId(),
+                        "DONE",
+                        new BigDecimal("42000"),
+                        "Toss payment status=DONE"
+                ));
 
         tossWebhookService.handle(Map.of(
                 "eventType", "PAYMENT_STATUS_CHANGED",
@@ -194,6 +202,14 @@ class TossCheckoutIntegrationTest {
         ), member.id(), false);
 
         reset(orderNotificationEventPublisher);
+        when(paymentGateway.getPayment("payment-key-003"))
+                .thenReturn(new PaymentGateway.PaymentLookupResult(
+                        "payment-key-003",
+                        prepared.providerOrderId(),
+                        "CANCELED",
+                        new BigDecimal("62000"),
+                        "Operator refund"
+                ));
 
         tossWebhookService.handle(Map.of(
                 "eventType", "PAYMENT_CANCELED",
@@ -228,6 +244,14 @@ class TossCheckoutIntegrationTest {
                 "Daegu Center 3",
                 null
         ));
+        when(paymentGateway.getPayment("payment-key-004"))
+                .thenReturn(new PaymentGateway.PaymentLookupResult(
+                        "payment-key-004",
+                        prepared.providerOrderId(),
+                        "ABORTED",
+                        new BigDecimal("27000"),
+                        "USER_CANCEL: Buyer closed the window"
+                ));
 
         tossWebhookService.handle(Map.of(
                 "eventType", "PAYMENT_STATUS_CHANGED",
@@ -249,6 +273,47 @@ class TossCheckoutIntegrationTest {
         assertThat(cartService.getCart(member.id()).items()).hasSize(1);
         assertThat(productService.getEntity(product.id()).getStockQuantity()).isEqualTo(8);
         verify(orderNotificationEventPublisher).publish(eq(OrderNotificationType.PAYMENT_FAILED), any(PurchaseOrder.class));
+    }
+
+    @Test
+    void webhookWithMismatchedLookupOrder_doesNotChangePreparedOrder() {
+        MemberResponse member = createMember();
+        ProductResponse product = createProduct("Oxford Shirt", "ALPHA", "35000", 5);
+        addCartItem(member.id(), product.id(), 1);
+
+        when(paymentGateway.startCheckout(eq(PaymentMethod.CARD), eq(new BigDecimal("35000")), any(), any()))
+                .thenReturn(new PaymentGateway.CheckoutStartResult("https://pay.example/card"));
+
+        PrepareCheckoutResponse prepared = orderService.prepareCheckout(new PrepareCheckoutRequest(
+                member.id(),
+                PaymentMethod.CARD,
+                "Seoul Mapo 7",
+                null
+        ));
+        when(paymentGateway.getPayment("payment-key-005"))
+                .thenReturn(new PaymentGateway.PaymentLookupResult(
+                        "payment-key-005",
+                        "order_from_toss_lookup",
+                        "DONE",
+                        new BigDecimal("35000"),
+                        "Toss payment status=DONE"
+                ));
+
+        tossWebhookService.handle(Map.of(
+                "eventType", "PAYMENT_STATUS_CHANGED",
+                "data", Map.of(
+                        "orderId", prepared.providerOrderId(),
+                        "paymentKey", "payment-key-005",
+                        "status", "DONE",
+                        "totalAmount", 35000
+                )
+        ));
+
+        PurchaseOrder order = getOrder(prepared.providerOrderId());
+        assertThat(order.getStatus()).isEqualTo(OrderStatus.CREATED);
+        assertThat(order.getPayment().getStatus()).isEqualTo(PaymentStatus.READY);
+        assertThat(productService.getEntity(product.id()).getStockQuantity()).isEqualTo(5);
+        verify(orderNotificationEventPublisher, never()).publish(any(), any(PurchaseOrder.class));
     }
 
     private PurchaseOrder getOrder(String providerOrderId) {

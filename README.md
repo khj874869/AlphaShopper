@@ -12,7 +12,7 @@ This repository now separates `local` and `prod` profiles.
 - `prod` intentionally does not allow the fake payment gateway and is wired for Toss Payments
 
 The project now includes a Toss Payments hosted checkout implementation for production profile deployments.
-It now also includes Flyway-managed relational schema migrations and server-side Toss webhook reconciliation for approved, canceled, and failed payments.
+It now also includes Flyway-managed relational schema migrations, CSRF protection for cookie-authenticated mutations, and server-side Toss webhook reconciliation for approved, canceled, and failed payments.
 
 Implemented features:
 
@@ -190,6 +190,7 @@ Flow:
 4. The front-end calls `POST /api/orders/checkout/confirm` or `POST /api/orders/checkout/fail`.
 5. The backend finalizes order state and uses the stored `paymentKey` for refunds.
 6. Toss webhooks can reconcile `DONE`, `CANCELED`, `ABORTED`, and `EXPIRED` events if the browser redirect is delayed or interrupted.
+7. Each Toss webhook is verified by retrieving the payment from Toss with `paymentKey`; only the lookup result is trusted for order ID, status, amount, and reason.
 
 Required production settings:
 
@@ -465,6 +466,7 @@ You can inspect captured emails there without using a real SMTP provider.
 - mail sending is decoupled from order logic through Kafka
 - backend health endpoint is exposed at `/actuator/health`
 - auth is now issued through an HttpOnly cookie instead of exposing the access token to the browser app
+- cookie-authenticated mutation requests use an `X-XSRF-TOKEN` header issued by `/api/auth/csrf`
 - relational schema is now managed through Flyway migrations instead of Hibernate `create-drop`
 - real production search would usually add aliases, analyzers, zero-downtime reindexing, and sync retry handling
 - real production Kafka would usually add retry topics, dead-letter topics, and observability

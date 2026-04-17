@@ -10,11 +10,22 @@ public interface PaymentGateway {
 
     PaymentResult authorize(PaymentMethod paymentMethod, BigDecimal amount, String paymentReference, String providerOrderId);
 
+    PaymentLookupResult getPayment(String transactionKey);
+
     boolean refund(String transactionKey, BigDecimal amount, String reason);
 
     record CheckoutStartResult(String checkoutUrl) {
     }
 
     record PaymentResult(boolean approved, String transactionKey, String message) {
+    }
+
+    record PaymentLookupResult(
+            String transactionKey,
+            String providerOrderId,
+            String status,
+            BigDecimal amount,
+            String reason
+    ) {
     }
 }

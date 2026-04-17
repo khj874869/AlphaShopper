@@ -75,4 +75,40 @@ class AuthControllerIntegrationTest {
                 .andExpect(cookie().httpOnly("alphashopper_access_token", true))
                 .andExpect(header().string("Set-Cookie", containsString("SameSite=Lax")));
     }
+
+    @Test
+    void csrfEndpoint_issuesReadableXsrfToken() throws Exception {
+        mockMvc.perform(get("/api/auth/csrf"))
+                .andExpect(status().isOk())
+                .andExpect(cookie().exists("XSRF-TOKEN"))
+                .andExpect(cookie().httpOnly("XSRF-TOKEN", false))
+                .andExpect(jsonPath("$.headerName").value("X-XSRF-TOKEN"))
+                .andExpect(jsonPath("$.token").isNotEmpty());
+    }
+
+    @Test
+    void authenticatedMutation_withoutCsrfToken_isRejected() throws Exception {
+        memberService.create(new CreateMemberRequest(
+                "Csrf User",
+                "csrf-user@alphashopper.local",
+                "cookiepass123"
+        ));
+
+        MvcResult loginResult = mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "email": "csrf-user@alphashopper.local",
+                                  "password": "cookiepass123"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        mockMvc.perform(post("/api/orders/checkout")
+                        .cookie(loginResult.getResponse().getCookies())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isForbidden());
+    }
 }

@@ -75,6 +75,33 @@ public class TossPaymentsGateway implements PaymentGateway {
         return response != null && response.paymentKey() != null && !response.paymentKey().isBlank();
     }
 
+    @Override
+    public PaymentLookupResult getPayment(String transactionKey) {
+        TossPaymentResponse response = get("/v1/payments/" + transactionKey, TossPaymentResponse.class);
+        if (response == null || response.paymentKey() == null || response.paymentKey().isBlank()) {
+            throw new ApiException(HttpStatus.BAD_GATEWAY, "Toss payment lookup did not return a payment key.");
+        }
+
+        return new PaymentLookupResult(
+                response.paymentKey(),
+                response.orderId(),
+                response.status(),
+                response.totalAmount(),
+                response.resolveReason()
+        );
+    }
+
+    private <T> T get(String uri, Class<T> responseType) {
+        try {
+            return restClient.get()
+                    .uri(uri)
+                    .retrieve()
+                    .body(responseType);
+        } catch (RestClientException ex) {
+            throw new ApiException(HttpStatus.BAD_GATEWAY, "Toss payment lookup failed: " + ex.getMessage());
+        }
+    }
+
     private <T> T post(String uri, Object body, Class<T> responseType) {
         try {
             return restClient.post()
@@ -141,10 +168,46 @@ public class TossPaymentsGateway implements PaymentGateway {
             String orderId,
             String status,
             BigDecimal totalAmount,
-            TossCheckout checkout
+            TossCheckout checkout,
+            TossFailure failure,
+            java.util.List<TossCancel> cancels,
+            String lastTransactionKey
     ) {
+        private String resolveReason() {
+            if (failure != null) {
+                if (failure.code() != null && !failure.code().isBlank() && failure.message() != null && !failure.message().isBlank()) {
+                    return failure.code() + ": " + failure.message();
+                }
+                if (failure.message() != null && !failure.message().isBlank()) {
+                    return failure.message();
+                }
+                if (failure.code() != null && !failure.code().isBlank()) {
+                    return failure.code();
+                }
+            }
+
+            if (cancels != null) {
+                for (TossCancel cancel : cancels) {
+                    if (cancel.cancelReason() != null && !cancel.cancelReason().isBlank()) {
+                        return cancel.cancelReason();
+                    }
+                }
+            }
+
+            if (lastTransactionKey != null && !lastTransactionKey.isBlank()) {
+                return lastTransactionKey;
+            }
+
+            return status == null || status.isBlank() ? "Toss payment lookup result" : "Toss payment status=" + status;
+        }
     }
 
     private record TossCheckout(String url) {
+    }
+
+    private record TossFailure(String code, String message) {
+    }
+
+    private record TossCancel(String cancelReason) {
     }
 }

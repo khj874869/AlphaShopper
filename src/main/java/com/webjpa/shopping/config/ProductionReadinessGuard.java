@@ -22,6 +22,7 @@ public class ProductionReadinessGuard {
     private final String allowedOrigins;
     private final String frontendBaseUrl;
     private final String datasourceUrl;
+    private final boolean authCookieSecure;
 
     public ProductionReadinessGuard(Environment environment,
                                     @Value("${app.jwt.secret}") String jwtSecret,
@@ -30,7 +31,8 @@ public class ProductionReadinessGuard {
                                     @Value("${app.payment.toss.secret-key:}") String tossSecretKey,
                                     @Value("${app.frontend.allowed-origins:}") String allowedOrigins,
                                     @Value("${app.frontend.base-url:}") String frontendBaseUrl,
-                                    @Value("${spring.datasource.url:}") String datasourceUrl) {
+                                    @Value("${spring.datasource.url:}") String datasourceUrl,
+                                    @Value("${app.auth.cookie.secure:false}") boolean authCookieSecure) {
         this.environment = environment;
         this.jwtSecret = jwtSecret;
         this.demoDataEnabled = demoDataEnabled;
@@ -39,6 +41,7 @@ public class ProductionReadinessGuard {
         this.allowedOrigins = allowedOrigins;
         this.frontendBaseUrl = frontendBaseUrl;
         this.datasourceUrl = datasourceUrl;
+        this.authCookieSecure = authCookieSecure;
     }
 
     @PostConstruct
@@ -75,6 +78,10 @@ public class ProductionReadinessGuard {
 
         if (datasourceUrl.contains("jdbc:h2:mem")) {
             errors.add("Production profile cannot use the in-memory H2 datasource.");
+        }
+
+        if (!authCookieSecure) {
+            errors.add("APP_AUTH_COOKIE_SECURE must be true in production.");
         }
 
         if (!errors.isEmpty()) {
