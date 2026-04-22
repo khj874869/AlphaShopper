@@ -1,0 +1,64 @@
+groups:
+  - name: alphashopper-dlt-replay
+    rules:
+      - alert: AlphaShopperDltReplayException
+        expr: increase(alphashopper_kafka_dlt_replay_results_total{result="exception"}[10m]) > 0
+        for: 0m
+        labels:
+          severity: critical
+          service: alphashopper
+        annotations:
+          summary: "DLT replay raised an exception"
+          description: "DLT replay hit {{ $value }} exception(s) in the last 10 minutes for source={{ $labels.source_topic }}, target={{ $labels.target_topic }}, dry_run={{ $labels.dry_run }}."
+          runbook_url: "docs/alerts/dlt-replay-runbook.md"
+
+      - alert: AlphaShopperDltReplayFailedMessages
+        expr: increase(alphashopper_kafka_dlt_replay_messages_total{kind="failed"}[15m]) > 0
+        for: 0m
+        labels:
+          severity: warning
+          service: alphashopper
+        annotations:
+          summary: "DLT replay failed to process one or more records"
+          description: "DLT replay failed {{ $value }} message(s) in the last 15 minutes for source={{ $labels.source_topic }}, target={{ $labels.target_topic }}, dry_run={{ $labels.dry_run }}."
+          runbook_url: "docs/alerts/dlt-replay-runbook.md"
+
+      - alert: AlphaShopperDltReplayFailureRatioHigh
+        expr: |
+          (
+            sum by (source_topic, target_topic, dry_run) (
+              increase(alphashopper_kafka_dlt_replay_results_total{result=~"failed|exception"}[30m])
+            )
+            /
+            sum by (source_topic, target_topic, dry_run) (
+              increase(alphashopper_kafka_dlt_replay_results_total[30m])
+            )
+          ) > 0.2
+        for: 5m
+        labels:
+          severity: warning
+          service: alphashopper
+        annotations:
+          summary: "DLT replay failure ratio is high"
+          description: "More than 20 percent of DLT replay attempts failed for source={{ $labels.source_topic }}, target={{ $labels.target_topic }}, dry_run={{ $labels.dry_run }} over 30 minutes."
+          runbook_url: "docs/alerts/dlt-replay-runbook.md"
+
+      - alert: AlphaShopperDltReplaySlow
+        expr: |
+          (
+            sum by (source_topic, target_topic, dry_run, result) (
+              rate(alphashopper_kafka_dlt_replay_duration_seconds_sum[10m])
+            )
+            /
+            sum by (source_topic, target_topic, dry_run, result) (
+              rate(alphashopper_kafka_dlt_replay_duration_seconds_count[10m])
+            )
+          ) > 30
+        for: 10m
+        labels:
+          severity: warning
+          service: alphashopper
+        annotations:
+          summary: "DLT replay is slow"
+          description: "Average DLT replay duration is above 30s for source={{ $labels.source_topic }}, target={{ $labels.target_topic }}, dry_run={{ $labels.dry_run }}, result={{ $labels.result }}."
+          runbook_url: "docs/alerts/dlt-replay-runbook.md"

@@ -204,6 +204,7 @@ Production guards:
 - HTTP responses include `X-Request-Id`; incoming valid values are reused, otherwise the backend generates one
 - order notification messages carry `requestId` so Kafka consumer and mail logs can be correlated with the original HTTP request
 - DLT replay emits Prometheus metrics under `alphashopper_kafka_dlt_replay_*`
+- sample DLT replay alert rules live in `docs/alerts/dlt-replay-alerts.yml`
 
 ## Front-end stack
 
