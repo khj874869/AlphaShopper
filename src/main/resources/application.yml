@@ -59,6 +59,10 @@ app:
     retry:
       max-attempts: ${APP_KAFKA_NOTIFICATION_RETRY_MAX_ATTEMPTS:3}
       backoff-ms: ${APP_KAFKA_NOTIFICATION_RETRY_BACKOFF_MS:1000}
+    dlt-replay:
+      consumer-group-id: ${APP_KAFKA_NOTIFICATION_DLT_REPLAY_CONSUMER_GROUP_ID:zigzag-notification-dlt-replay}
+      poll-timeout-ms: ${APP_KAFKA_NOTIFICATION_DLT_REPLAY_POLL_TIMEOUT_MS:3000}
+      send-timeout-ms: ${APP_KAFKA_NOTIFICATION_DLT_REPLAY_SEND_TIMEOUT_MS:10000}
     topics:
       order-notifications: ${APP_KAFKA_ORDER_NOTIFICATIONS_TOPIC:order-notifications}
       order-notifications-dlt: ${APP_KAFKA_ORDER_NOTIFICATIONS_DLT_TOPIC:order-notifications.DLT}

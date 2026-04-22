@@ -26,6 +26,10 @@ app:
     retry:
       max-attempts: 3
       backoff-ms: 1000
+    dlt-replay:
+      consumer-group-id: test-order-notification-dlt-replay
+      poll-timeout-ms: 100
+      send-timeout-ms: 1000
     topics:
       order-notifications: order-notifications
       order-notifications-dlt: order-notifications.DLT

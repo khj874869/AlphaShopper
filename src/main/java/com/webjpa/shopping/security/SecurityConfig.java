@@ -52,6 +52,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/auth/login", "/api/auth/register", "/api/auth/logout", "/api/members").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/payments/toss/webhooks").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/products/**", "/api/coupons").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/admin/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.POST, "/api/products", "/api/products/search/reindex").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PATCH, "/api/orders/*/delivery").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.GET, "/api/members").hasRole("ADMIN")
