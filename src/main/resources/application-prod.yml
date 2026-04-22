@@ -15,6 +15,13 @@ spring:
     properties:
       hibernate:
         format_sql: false
+  flyway:
+    enabled: true
+    clean-disabled: true
+    validate-on-migrate: true
+    validate-migration-naming: true
+    baseline-on-migrate: false
+    out-of-order: false
   elasticsearch:
     uris: ${ELASTICSEARCH_URL}
   kafka:

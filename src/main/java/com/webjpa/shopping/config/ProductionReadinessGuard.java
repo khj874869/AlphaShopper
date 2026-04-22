@@ -22,7 +22,13 @@ public class ProductionReadinessGuard {
     private final String allowedOrigins;
     private final String frontendBaseUrl;
     private final String datasourceUrl;
+    private final String ddlAuto;
     private final boolean authCookieSecure;
+    private final boolean flywayEnabled;
+    private final boolean flywayCleanDisabled;
+    private final boolean flywayValidateOnMigrate;
+    private final boolean flywayBaselineOnMigrate;
+    private final boolean flywayOutOfOrder;
 
     public ProductionReadinessGuard(Environment environment,
                                     @Value("${app.jwt.secret}") String jwtSecret,
@@ -32,7 +38,13 @@ public class ProductionReadinessGuard {
                                     @Value("${app.frontend.allowed-origins:}") String allowedOrigins,
                                     @Value("${app.frontend.base-url:}") String frontendBaseUrl,
                                     @Value("${spring.datasource.url:}") String datasourceUrl,
-                                    @Value("${app.auth.cookie.secure:false}") boolean authCookieSecure) {
+                                    @Value("${spring.jpa.hibernate.ddl-auto:}") String ddlAuto,
+                                    @Value("${app.auth.cookie.secure:false}") boolean authCookieSecure,
+                                    @Value("${spring.flyway.enabled:true}") boolean flywayEnabled,
+                                    @Value("${spring.flyway.clean-disabled:true}") boolean flywayCleanDisabled,
+                                    @Value("${spring.flyway.validate-on-migrate:true}") boolean flywayValidateOnMigrate,
+                                    @Value("${spring.flyway.baseline-on-migrate:false}") boolean flywayBaselineOnMigrate,
+                                    @Value("${spring.flyway.out-of-order:false}") boolean flywayOutOfOrder) {
         this.environment = environment;
         this.jwtSecret = jwtSecret;
         this.demoDataEnabled = demoDataEnabled;
@@ -41,7 +53,13 @@ public class ProductionReadinessGuard {
         this.allowedOrigins = allowedOrigins;
         this.frontendBaseUrl = frontendBaseUrl;
         this.datasourceUrl = datasourceUrl;
+        this.ddlAuto = ddlAuto;
         this.authCookieSecure = authCookieSecure;
+        this.flywayEnabled = flywayEnabled;
+        this.flywayCleanDisabled = flywayCleanDisabled;
+        this.flywayValidateOnMigrate = flywayValidateOnMigrate;
+        this.flywayBaselineOnMigrate = flywayBaselineOnMigrate;
+        this.flywayOutOfOrder = flywayOutOfOrder;
     }
 
     @PostConstruct
@@ -78,6 +96,30 @@ public class ProductionReadinessGuard {
 
         if (datasourceUrl.contains("jdbc:h2:mem")) {
             errors.add("Production profile cannot use the in-memory H2 datasource.");
+        }
+
+        if (!"validate".equalsIgnoreCase(ddlAuto)) {
+            errors.add("spring.jpa.hibernate.ddl-auto must be validate in production.");
+        }
+
+        if (!flywayEnabled) {
+            errors.add("spring.flyway.enabled must be true in production.");
+        }
+
+        if (!flywayCleanDisabled) {
+            errors.add("spring.flyway.clean-disabled must be true in production.");
+        }
+
+        if (!flywayValidateOnMigrate) {
+            errors.add("spring.flyway.validate-on-migrate must be true in production.");
+        }
+
+        if (flywayBaselineOnMigrate) {
+            errors.add("spring.flyway.baseline-on-migrate must be false in production.");
+        }
+
+        if (flywayOutOfOrder) {
+            errors.add("spring.flyway.out-of-order must be false in production.");
         }
 
         if (!authCookieSecure) {

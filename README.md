@@ -168,6 +168,11 @@ Production guards:
 - startup fails if `prod` points at in-memory H2
 - startup fails if `prod` still tries to use the fake payment provider
 - startup fails if Toss provider is enabled without a secret key
+- startup fails if `prod` disables Flyway migrations
+- startup fails if `prod` allows Flyway `clean`
+- startup fails if `prod` disables Flyway validation before migration
+- startup fails if `prod` allows Flyway baseline-on-migrate or out-of-order migrations
+- startup fails if `prod` lets Hibernate manage schema with anything other than `ddl-auto=validate`
 
 ## Search index behavior
 
@@ -175,6 +180,14 @@ Production guards:
 - local startup reindex is enabled by default with `app.search.reindex-on-startup=true`
 - product creation writes to DB and Elasticsearch together
 - manual reindex API is available if Elasticsearch starts later than the app
+
+## Database migration behavior
+
+- Flyway migrations live under `src/main/resources/db/migration`
+- Flyway validates migration checksums before applying migrations
+- Flyway `clean` is disabled by default and is blocked in `prod`
+- Hibernate schema management is limited to validation; schema changes must go through Flyway
+- Production keeps `baseline-on-migrate=false` and `out-of-order=false` so adoption and hotfix migrations require explicit review
 
 ## Front-end stack
 
