@@ -147,4 +147,16 @@ public class OrderNotificationDltReplayService {
                 lastError
         );
     }
+
+    String sourceTopic() {
+        return sourceTopic;
+    }
+
+    String targetTopic() {
+        return targetTopic;
+    }
+
+    String consumerGroupId() {
+        return consumerGroupId;
+    }
 }

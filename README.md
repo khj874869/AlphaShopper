@@ -273,7 +273,9 @@ Kafka notification retry:
 - after retries are exhausted, the original message is published to `APP_KAFKA_ORDER_NOTIFICATIONS_DLT_TOPIC`
 - the DLT topic should have at least the same partition count as the primary notification topic
 - admins can replay DLT messages with `POST /api/admin/kafka/order-notifications/dlt/replay?maxMessages=100&dryRun=false`
+- admins can inspect recent replay audit records with `GET /api/admin/kafka/order-notifications/dlt/replay/audits?limit=50`
 - DLT replay uses `APP_KAFKA_NOTIFICATION_DLT_REPLAY_CONSUMER_GROUP_ID` and commits DLT offsets only after publishing back to the primary topic succeeds
+- DLT replay audit records capture the admin, requested message count, inspected/replayed/committed/failed counts, status, timestamps, and last error
 
 Notification triggers:
 
@@ -524,5 +526,5 @@ You can inspect captured emails there without using a real SMTP provider.
 - cookie-authenticated mutation requests use an `X-XSRF-TOKEN` header issued by `/api/auth/csrf`
 - relational schema is now managed through Flyway migrations instead of Hibernate `create-drop`
 - real production search would usually add aliases, analyzers, zero-downtime reindexing, and sync retry handling
-- Kafka notification failures retry and then publish to a DLT; admin replay can move DLT messages back to the primary topic
+- Kafka notification failures retry and then publish to a DLT; admin replay can move DLT messages back to the primary topic and records each attempt in an audit table
 - real production PG integration would need idempotency, outbox, and compensation handling
