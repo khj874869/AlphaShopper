@@ -1,5 +1,6 @@
 package com.webjpa.shopping.service;
 
+import com.webjpa.shopping.logging.LogValues;
 import com.webjpa.shopping.messaging.OrderNotificationMessage;
 import com.webjpa.shopping.messaging.OrderNotificationType;
 import org.slf4j.Logger;
@@ -31,8 +32,8 @@ public class MailNotificationService {
         mailMessage.setText(buildBody(message));
         mailSender.send(mailMessage);
 
-        log.info("Order notification email sent. orderId={}, type={}, recipient={}",
-                message.orderId(), message.type(), message.recipientEmail());
+        log.info("event=order_notification.email.sent orderId={} memberId={} type={} recipient={}",
+                message.orderId(), message.memberId(), message.type(), LogValues.maskEmail(message.recipientEmail()));
     }
 
     private String buildSubject(OrderNotificationType type, Long orderId) {

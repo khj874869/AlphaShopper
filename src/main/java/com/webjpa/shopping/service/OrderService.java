@@ -20,9 +20,12 @@ import com.webjpa.shopping.dto.OrderResponse;
 import com.webjpa.shopping.dto.OrderSummaryResponse;
 import com.webjpa.shopping.dto.PrepareCheckoutRequest;
 import com.webjpa.shopping.dto.PrepareCheckoutResponse;
+import com.webjpa.shopping.logging.LogValues;
 import com.webjpa.shopping.messaging.OrderNotificationEventPublisher;
 import com.webjpa.shopping.messaging.OrderNotificationType;
 import com.webjpa.shopping.repository.PurchaseOrderRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -37,6 +40,8 @@ import java.util.UUID;
 @Service
 @Transactional(readOnly = true)
 public class OrderService {
+
+    private static final Logger log = LoggerFactory.getLogger(OrderService.class);
 
     private final MemberService memberService;
     private final CartService cartService;
@@ -114,6 +119,14 @@ public class OrderService {
                 buildOrderName(order)
         );
 
+        log.info("event=checkout.hosted.started orderId={} memberId={} provider={} paymentMethod={} providerOrderId={} payAmount={}",
+                order.getId(),
+                order.getMember().getId(),
+                paymentProvider,
+                order.getPayment().getMethod(),
+                LogValues.safe(order.getPayment().getPaymentReference()),
+                order.getPayAmount());
+
         return new PrepareCheckoutResponse(
                 paymentProvider,
                 order.getPayment().getPaymentReference(),
@@ -128,10 +141,23 @@ public class OrderService {
 
         PurchaseOrder order = getAccessibleOrderByProviderOrderId(request.providerOrderId(), actorMemberId, admin);
         if (isApprovedOrder(order, request.paymentKey())) {
+            log.info("event=checkout.confirm.idempotent orderId={} memberId={} provider={} providerOrderId={} paymentKey={}",
+                    order.getId(),
+                    order.getMember().getId(),
+                    paymentProvider,
+                    LogValues.safe(request.providerOrderId()),
+                    LogValues.maskToken(request.paymentKey()));
             return OrderResponse.from(order);
         }
 
         validatePreparedOrder(order, request.amount());
+        log.info("event=checkout.confirm.requested orderId={} memberId={} provider={} providerOrderId={} paymentKey={} requestedAmount={}",
+                order.getId(),
+                order.getMember().getId(),
+                paymentProvider,
+                LogValues.safe(request.providerOrderId()),
+                LogValues.maskToken(request.paymentKey()),
+                request.amount());
 
         PaymentGateway.PaymentResult paymentResult = paymentGateway.authorize(
                 order.getPayment().getMethod(),
@@ -154,6 +180,13 @@ public class OrderService {
         requireHostedCheckoutProvider();
 
         PurchaseOrder order = getAccessibleOrderByProviderOrderId(request.providerOrderId(), actorMemberId, admin);
+        log.warn("event=checkout.hosted.failed_reported orderId={} memberId={} provider={} providerOrderId={} errorCode={} errorMessage={}",
+                order.getId(),
+                order.getMember().getId(),
+                paymentProvider,
+                LogValues.safe(request.providerOrderId()),
+                LogValues.safe(request.errorCode()),
+                LogValues.safe(request.errorMessage()));
         failPreparedOrder(order, buildFailureReason(request.errorCode(), request.errorMessage()));
     }
 
@@ -179,6 +212,13 @@ public class OrderService {
         Payment payment = order.getPayment();
         boolean refunded = paymentGateway.refund(payment.getTransactionKey(), payment.getAmount(), reason);
         if (!refunded) {
+            log.warn("event=payment.refund.failed orderId={} memberId={} provider={} transactionKey={} amount={} reason={}",
+                    order.getId(),
+                    order.getMember().getId(),
+                    paymentProvider,
+                    LogValues.maskToken(payment.getTransactionKey()),
+                    payment.getAmount(),
+                    LogValues.safe(reason));
             throw new ApiException(HttpStatus.BAD_GATEWAY, "Refund failed.");
         }
 
@@ -196,10 +236,23 @@ public class OrderService {
 
         PurchaseOrder order = getDetailOrderByProviderOrderId(providerOrderId);
         if (isApprovedOrder(order, transactionKey)) {
+            log.info("event=payment.reconcile.skipped reason=already_approved orderId={} memberId={} provider={} providerOrderId={} transactionKey={}",
+                    order.getId(),
+                    order.getMember().getId(),
+                    paymentProvider,
+                    LogValues.safe(providerOrderId),
+                    LogValues.maskToken(transactionKey));
             return;
         }
 
         if (order.getPayment().getStatus() == PaymentStatus.REFUNDED || order.getStatus() == OrderStatus.CANCELLED) {
+            log.info("event=payment.reconcile.skipped reason=order_closed orderId={} memberId={} provider={} providerOrderId={} orderStatus={} paymentStatus={}",
+                    order.getId(),
+                    order.getMember().getId(),
+                    paymentProvider,
+                    LogValues.safe(providerOrderId),
+                    order.getStatus(),
+                    order.getPayment().getStatus());
             return;
         }
 
@@ -213,6 +266,12 @@ public class OrderService {
 
         PurchaseOrder order = getDetailOrderByProviderOrderId(providerOrderId);
         if (order.getStatus() == OrderStatus.CANCELLED && order.getPayment().getStatus() == PaymentStatus.REFUNDED) {
+            log.info("event=payment.reconcile.skipped reason=already_refunded orderId={} memberId={} provider={} providerOrderId={} transactionKey={}",
+                    order.getId(),
+                    order.getMember().getId(),
+                    paymentProvider,
+                    LogValues.safe(providerOrderId),
+                    LogValues.maskToken(transactionKey));
             return;
         }
 
@@ -222,6 +281,14 @@ public class OrderService {
         }
 
         if (!isApprovedOrder(order, transactionKey)) {
+            log.warn("event=payment.reconcile.skipped reason=transaction_mismatch orderId={} memberId={} provider={} providerOrderId={} transactionKey={} orderStatus={} paymentStatus={}",
+                    order.getId(),
+                    order.getMember().getId(),
+                    paymentProvider,
+                    LogValues.safe(providerOrderId),
+                    LogValues.maskToken(transactionKey),
+                    order.getStatus(),
+                    order.getPayment().getStatus());
             return;
         }
 
@@ -257,10 +324,14 @@ public class OrderService {
                     throw new ApiException(HttpStatus.BAD_REQUEST, "Tracking number is required when shipping.");
                 }
                 order.ship(trackingNumber);
+                log.info("event=delivery.updated orderId={} memberId={} deliveryStatus={} trackingNumber={}",
+                        order.getId(), order.getMember().getId(), order.getDeliveryStatus(), LogValues.maskToken(trackingNumber));
                 orderNotificationEventPublisher.publish(OrderNotificationType.ORDER_SHIPPED, order);
             }
             case DELIVERED -> {
                 order.deliver();
+                log.info("event=delivery.updated orderId={} memberId={} deliveryStatus={}",
+                        order.getId(), order.getMember().getId(), order.getDeliveryStatus());
                 orderNotificationEventPublisher.publish(OrderNotificationType.ORDER_DELIVERED, order);
             }
         }
@@ -337,7 +408,19 @@ public class OrderService {
 
         Payment payment = Payment.ready(order, paymentMethod, order.getPayAmount(), paymentReference);
         order.attachPayment(payment);
-        return purchaseOrderRepository.save(order);
+        PurchaseOrder savedOrder = purchaseOrderRepository.save(order);
+        log.info("event=order.created orderId={} memberId={} provider={} paymentMethod={} providerOrderId={} itemCount={} totalAmount={} discountAmount={} payAmount={} couponApplied={}",
+                savedOrder.getId(),
+                member.getId(),
+                paymentProvider,
+                paymentMethod,
+                LogValues.safe(paymentReference),
+                savedOrder.getItems().size(),
+                savedOrder.getTotalAmount(),
+                savedOrder.getDiscountAmount(),
+                savedOrder.getPayAmount(),
+                couponCode != null && !couponCode.isBlank());
+        return savedOrder;
     }
 
     private void validatePreparedOrder(PurchaseOrder order, BigDecimal requestedAmount) {
@@ -378,6 +461,14 @@ public class OrderService {
         order.markPaid();
         order.prepareDelivery();
         cartService.clear(memberId);
+        log.info("event=payment.approved orderId={} memberId={} provider={} providerOrderId={} transactionKey={} payAmount={} itemCount={}",
+                order.getId(),
+                memberId,
+                paymentProvider,
+                LogValues.safe(order.getPayment().getPaymentReference()),
+                LogValues.maskToken(transactionKey),
+                order.getPayAmount(),
+                order.getItems().size());
         orderNotificationEventPublisher.publish(OrderNotificationType.ORDER_CONFIRMED, order);
     }
 
@@ -388,6 +479,12 @@ public class OrderService {
 
         order.markPaymentFailed();
         order.getPayment().fail(reason);
+        log.warn("event=payment.failed orderId={} memberId={} provider={} providerOrderId={} reason={}",
+                order.getId(),
+                order.getMember().getId(),
+                paymentProvider,
+                LogValues.safe(order.getPayment().getPaymentReference()),
+                LogValues.safe(reason));
         orderNotificationEventPublisher.publish(OrderNotificationType.PAYMENT_FAILED, order);
     }
 
@@ -395,6 +492,13 @@ public class OrderService {
         restoreStock(order);
         order.getPayment().refund(reason);
         order.cancel();
+        log.info("event=payment.refunded orderId={} memberId={} provider={} providerOrderId={} transactionKey={} reason={}",
+                order.getId(),
+                order.getMember().getId(),
+                paymentProvider,
+                LogValues.safe(order.getPayment().getPaymentReference()),
+                LogValues.maskToken(order.getPayment().getTransactionKey()),
+                LogValues.safe(reason));
         orderNotificationEventPublisher.publish(OrderNotificationType.ORDER_REFUNDED, order);
     }
 

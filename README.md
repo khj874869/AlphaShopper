@@ -199,6 +199,8 @@ Production guards:
 - Prometheus metrics are exposed at `/actuator/prometheus`
 - production can override exposed actuator endpoints with `MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE`
 - Prometheus scraping should be restricted by the deployment network or ingress rules
+- operational logs use parseable `event=... key=value` fields for checkout, payment reconciliation, Kafka notification, email, and search indexing flows
+- payment keys, tracking numbers, and recipient emails are masked before being written to application logs
 
 ## Front-end stack
 

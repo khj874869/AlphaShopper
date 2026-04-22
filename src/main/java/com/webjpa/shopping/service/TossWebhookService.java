@@ -1,5 +1,6 @@
 package com.webjpa.shopping.service;
 
+import com.webjpa.shopping.logging.LogValues;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -29,35 +30,45 @@ public class TossWebhookService {
         String paymentKey = asString(data.get("paymentKey"));
         String payloadStatus = asString(data.get("status"));
 
-        log.info("Received Toss webhook. eventType={}, orderId={}, paymentKey={}, status={}",
-                eventType,
-                payloadOrderId,
-                paymentKey,
-                payloadStatus);
+        log.info("event=toss.webhook.received eventType={} providerOrderId={} paymentKey={} paymentStatus={}",
+                LogValues.safe(eventType),
+                LogValues.safe(payloadOrderId),
+                LogValues.maskToken(paymentKey),
+                LogValues.safe(payloadStatus));
 
         if (paymentKey.isBlank()) {
-            log.warn("Ignoring Toss webhook without paymentKey. eventType={}, orderId={}, status={}",
-                    eventType, payloadOrderId, payloadStatus);
+            log.warn("event=toss.webhook.ignored reason=missing_payment_key eventType={} providerOrderId={} paymentStatus={}",
+                    LogValues.safe(eventType), LogValues.safe(payloadOrderId), LogValues.safe(payloadStatus));
             return;
         }
 
         PaymentGateway.PaymentLookupResult payment = paymentGateway.getPayment(paymentKey);
         if (!payloadOrderId.isBlank() && !Objects.equals(payloadOrderId, payment.providerOrderId())) {
-            log.warn("Ignoring Toss webhook with mismatched orderId. payloadOrderId={}, lookupOrderId={}, paymentKey={}",
-                    payloadOrderId, payment.providerOrderId(), paymentKey);
+            log.warn("event=toss.webhook.ignored reason=provider_order_id_mismatch payloadProviderOrderId={} lookupProviderOrderId={} paymentKey={}",
+                    LogValues.safe(payloadOrderId), LogValues.safe(payment.providerOrderId()), LogValues.maskToken(paymentKey));
             return;
         }
 
         if (payment.providerOrderId() == null || payment.providerOrderId().isBlank()) {
-            log.warn("Ignoring Toss webhook because payment lookup did not return orderId. paymentKey={}", paymentKey);
+            log.warn("event=toss.webhook.ignored reason=missing_lookup_provider_order_id paymentKey={}",
+                    LogValues.maskToken(paymentKey));
             return;
         }
 
-        switch (normalizeStatus(payment.status())) {
+        String normalizedStatus = normalizeStatus(payment.status());
+        log.info("event=toss.webhook.verified eventType={} providerOrderId={} paymentKey={} paymentStatus={} action={}",
+                LogValues.safe(eventType),
+                LogValues.safe(payment.providerOrderId()),
+                LogValues.maskToken(payment.transactionKey()),
+                LogValues.safe(payment.status()),
+                webhookAction(normalizedStatus));
+
+        switch (normalizedStatus) {
             case "DONE" -> orderService.reconcileApprovedPayment(payment.providerOrderId(), payment.transactionKey(), payment.amount());
             case "CANCELED" -> orderService.reconcileCanceledPayment(payment.providerOrderId(), payment.transactionKey(), payment.reason());
             case "ABORTED", "EXPIRED" -> orderService.reconcileFailedPayment(payment.providerOrderId(), payment.reason());
-            default -> log.debug("Ignoring verified Toss webhook status={} for orderId={}", payment.status(), payment.providerOrderId());
+            default -> log.debug("event=toss.webhook.ignored reason=unsupported_status providerOrderId={} paymentStatus={}",
+                    LogValues.safe(payment.providerOrderId()), LogValues.safe(payment.status()));
         }
     }
 
@@ -75,5 +86,14 @@ public class TossWebhookService {
 
     private String normalizeStatus(String status) {
         return status == null ? "" : status.toUpperCase();
+    }
+
+    private String webhookAction(String normalizedStatus) {
+        return switch (normalizedStatus) {
+            case "DONE" -> "reconcile_approved";
+            case "CANCELED" -> "reconcile_canceled";
+            case "ABORTED", "EXPIRED" -> "reconcile_failed";
+            default -> "ignore";
+        };
     }
 }

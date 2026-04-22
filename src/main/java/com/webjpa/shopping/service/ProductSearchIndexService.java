@@ -1,6 +1,7 @@
 package com.webjpa.shopping.service;
 
 import com.webjpa.shopping.domain.Product;
+import com.webjpa.shopping.logging.LogValues;
 import com.webjpa.shopping.repository.ProductRepository;
 import com.webjpa.shopping.search.ProductDocument;
 import com.webjpa.shopping.search.ProductSearchRepository;
@@ -42,25 +43,30 @@ public class ProductSearchIndexService {
 
     public void index(Product product) {
         if (!searchEnabled) {
+            log.debug("event=product_search.index.skipped reason=search_disabled productId={}", product.getId());
             return;
         }
 
         ProductSearchRepository productSearchRepository = productSearchRepositoryProvider.getIfAvailable();
         if (productSearchRepository == null) {
+            log.debug("event=product_search.index.skipped reason=repository_unavailable productId={}", product.getId());
             return;
         }
 
         ensureIndex();
         productSearchRepository.save(ProductDocument.from(product));
+        log.debug("event=product_search.index.saved productId={} active={}", product.getId(), product.isActive());
     }
 
     public long reindexAll() {
         if (!searchEnabled) {
+            log.info("event=product_search.reindex.skipped reason=search_disabled");
             return 0L;
         }
 
         ProductSearchRepository productSearchRepository = productSearchRepositoryProvider.getIfAvailable();
         if (productSearchRepository == null) {
+            log.warn("event=product_search.reindex.skipped reason=repository_unavailable");
             return 0L;
         }
 
@@ -71,6 +77,7 @@ public class ProductSearchIndexService {
 
         productSearchRepository.deleteAll();
         productSearchRepository.saveAll(documents);
+        log.info("event=product_search.reindex.completed count={}", documents.size());
         return documents.size();
     }
 
@@ -83,9 +90,12 @@ public class ProductSearchIndexService {
 
         try {
             long count = reindexAll();
-            log.info("Elasticsearch product index synchronized. count={}", count);
+            log.info("event=product_search.startup_reindex.completed count={}", count);
         } catch (Exception ex) {
-            log.warn("Failed to synchronize Elasticsearch product index at startup: {}", ex.getMessage());
+            log.warn("event=product_search.startup_reindex.failed errorType={} error={}",
+                    ex.getClass().getSimpleName(),
+                    LogValues.safe(ex.getMessage()),
+                    ex);
         }
     }
 
@@ -102,5 +112,6 @@ public class ProductSearchIndexService {
 
         indexOperations.create();
         indexOperations.putMapping(indexOperations.createMapping());
+        log.info("event=product_search.index.created documentType={}", ProductDocument.class.getSimpleName());
     }
 }
