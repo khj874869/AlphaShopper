@@ -39,6 +39,7 @@ Implemented features:
 - Spring Kafka
 - Spring Mail
 - Spring Boot Actuator
+- Prometheus metrics
 - Node.js 22.20.0
 - npm 10.9.x
 - Next.js App Router
@@ -104,6 +105,7 @@ npm run dev
 
 - `http://localhost:3000/`
 - health check: `http://localhost:8080/actuator/health`
+- Prometheus metrics: `http://localhost:8080/actuator/prometheus`
 
 H2 console in local only:
 
@@ -189,6 +191,14 @@ Production guards:
 - Flyway `clean` is disabled by default and is blocked in `prod`
 - Hibernate schema management is limited to validation; schema changes must go through Flyway
 - Production keeps `baseline-on-migrate=false` and `out-of-order=false` so adoption and hotfix migrations require explicit review
+
+## Observability
+
+- backend health is exposed at `/actuator/health`
+- backend info is exposed at `/actuator/info`
+- Prometheus metrics are exposed at `/actuator/prometheus`
+- production can override exposed actuator endpoints with `MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE`
+- Prometheus scraping should be restricted by the deployment network or ingress rules
 
 ## Front-end stack
 
@@ -495,6 +505,7 @@ You can inspect captured emails there without using a real SMTP provider.
 - Kafka publishing is executed after transaction commit
 - mail sending is decoupled from order logic through Kafka
 - backend health endpoint is exposed at `/actuator/health`
+- Prometheus metrics are exposed at `/actuator/prometheus`
 - auth is now issued through an HttpOnly cookie instead of exposing the access token to the browser app
 - cookie-authenticated mutation requests use an `X-XSRF-TOKEN` header issued by `/api/auth/csrf`
 - relational schema is now managed through Flyway migrations instead of Hibernate `create-drop`

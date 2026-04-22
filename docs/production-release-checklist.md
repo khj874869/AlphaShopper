@@ -23,6 +23,7 @@ Use this checklist before promoting AlphaShopper to a production-like environmen
 
 - [ ] `SPRING_PROFILES_ACTIVE=prod`.
 - [ ] `SERVER_PORT` matches the platform routing configuration.
+- [ ] `MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE` includes only approved actuator endpoints.
 - [ ] `APP_JWT_SECRET` is long, random, and different from local examples.
 - [ ] `APP_AUTH_COOKIE_SECURE=true`.
 - [ ] `APP_AUTH_COOKIE_SAME_SITE` matches the production domain model.
@@ -84,6 +85,7 @@ Use this checklist before promoting AlphaShopper to a production-like environmen
 ## 9. Smoke Tests
 
 - [ ] `GET /actuator/health` returns healthy.
+- [ ] `GET /actuator/prometheus` returns Prometheus metrics from an approved network path.
 - [ ] Product catalog loads.
 - [ ] Login succeeds and sets the HttpOnly auth cookie.
 - [ ] `/api/auth/me` returns the authenticated member.
@@ -106,6 +108,7 @@ Use this checklist before promoting AlphaShopper to a production-like environmen
 ## 11. Post-Release
 
 - [ ] Error rate and latency are monitored for backend APIs.
+- [ ] Prometheus scraping for `/actuator/prometheus` is healthy.
 - [ ] Kafka consumer lag is monitored.
 - [ ] Payment failure and webhook reconciliation logs are reviewed.
 - [ ] Mail delivery failures are reviewed.
