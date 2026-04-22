@@ -30,6 +30,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -356,8 +357,9 @@ public class OrderService {
     }
 
     private void validateStock(PurchaseOrder order) {
+        Map<Long, Product> productsById = getOrderItemProducts(order);
         for (OrderItem item : order.getItems()) {
-            Product product = productService.getEntity(item.getProductId());
+            Product product = productsById.get(item.getProductId());
             if (!product.hasEnoughStock(item.getQuantity())) {
                 throw new ApiException(HttpStatus.BAD_REQUEST,
                         "Insufficient stock. productId=" + item.getProductId());
@@ -366,8 +368,9 @@ public class OrderService {
     }
 
     private void completeApprovedOrder(PurchaseOrder order, String transactionKey, Long memberId) {
+        Map<Long, Product> productsById = getOrderItemProducts(order);
         for (OrderItem item : order.getItems()) {
-            Product product = productService.getEntity(item.getProductId());
+            Product product = productsById.get(item.getProductId());
             product.decreaseStock(item.getQuantity());
         }
 
@@ -396,10 +399,17 @@ public class OrderService {
     }
 
     private void restoreStock(PurchaseOrder order) {
+        Map<Long, Product> productsById = getOrderItemProducts(order);
         order.getItems().forEach(item -> {
-            Product product = productService.getEntity(item.getProductId());
+            Product product = productsById.get(item.getProductId());
             product.increaseStock(item.getQuantity());
         });
+    }
+
+    private Map<Long, Product> getOrderItemProducts(PurchaseOrder order) {
+        return productService.getEntitiesByIds(order.getItems().stream()
+                .map(OrderItem::getProductId)
+                .toList());
     }
 
     private boolean usesHostedCheckout() {

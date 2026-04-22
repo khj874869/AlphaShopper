@@ -18,7 +18,9 @@ import com.webjpa.shopping.dto.ProductResponse;
 import com.webjpa.shopping.messaging.OrderNotificationEventPublisher;
 import com.webjpa.shopping.messaging.OrderNotificationMessage;
 import com.webjpa.shopping.messaging.OrderNotificationType;
+import com.webjpa.shopping.repository.ProductRepository;
 import com.webjpa.shopping.search.ProductSearchRepository;
+import org.mockito.ArgumentCaptor;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,6 +28,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
@@ -35,7 +38,9 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.reset;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 @SpringBootTest
@@ -56,6 +61,9 @@ class OrderServiceIntegrationTest {
 
     @Autowired
     private OrderService orderService;
+
+    @MockitoSpyBean
+    private ProductRepository productRepository;
 
     @MockitoBean
     private ProductSearchIndexService productSearchIndexService;
@@ -155,6 +163,29 @@ class OrderServiceIntegrationTest {
         assertThat(productService.getEntity(product.id()).getStockQuantity()).isEqualTo(4);
         verify(orderNotificationEventPublisher).publish(eq(OrderNotificationType.ORDER_CONFIRMED), any(PurchaseOrder.class));
         verify(orderNotificationEventPublisher).publish(eq(OrderNotificationType.ORDER_REFUNDED), any(PurchaseOrder.class));
+    }
+
+    @Test
+    void checkout_withMultipleProducts_loadsStockProductsInBulk() {
+        MemberResponse member = createMember();
+        ProductResponse firstProduct = createProduct("Oversized Shirt", "CITY LAB", "39000", 6);
+        ProductResponse secondProduct = createProduct("Linen Jacket", "ZIGZAG SELECT", "69000", 4);
+        addCartItem(member.id(), firstProduct.id(), 1);
+        addCartItem(member.id(), secondProduct.id(), 1);
+        clearInvocations(productRepository);
+
+        orderService.checkout(new CheckoutRequest(
+                member.id(),
+                PaymentMethod.CARD,
+                "ORDER-OK-BULK-STOCK",
+                "Seoul Gangnam 20",
+                null
+        ));
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<Iterable<Long>> productIdsCaptor = ArgumentCaptor.forClass(Iterable.class);
+        verify(productRepository, times(1)).findAllById(productIdsCaptor.capture());
+        assertThat(productIdsCaptor.getValue()).containsExactlyInAnyOrder(firstProduct.id(), secondProduct.id());
     }
 
     private MemberResponse createMember() {

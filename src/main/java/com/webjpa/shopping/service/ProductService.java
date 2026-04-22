@@ -9,7 +9,13 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collection;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional(readOnly = true)
@@ -50,5 +56,25 @@ public class ProductService {
     public Product getEntity(Long productId) {
         return productRepository.findById(productId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Product not found. id=" + productId));
+    }
+
+    public Map<Long, Product> getEntitiesByIds(Collection<Long> productIds) {
+        Set<Long> uniqueProductIds = productIds.stream()
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+
+        if (uniqueProductIds.isEmpty()) {
+            return Map.of();
+        }
+
+        Map<Long, Product> productsById = productRepository.findAllById(uniqueProductIds).stream()
+                .collect(Collectors.toMap(Product::getId, Function.identity()));
+
+        for (Long productId : uniqueProductIds) {
+            if (!productsById.containsKey(productId)) {
+                throw new ApiException(HttpStatus.NOT_FOUND, "Product not found. id=" + productId);
+            }
+        }
+
+        return productsById;
     }
 }
