@@ -1,14 +1,16 @@
 package com.webjpa.shopping.controller;
 
 import com.webjpa.shopping.dto.CreateMemberRequest;
+import com.webjpa.shopping.messaging.OrderNotificationMessage;
 import com.webjpa.shopping.service.MemberService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,8 +34,11 @@ class AuthControllerIntegrationTest {
     @Autowired
     private MemberService memberService;
 
-    @MockBean
+    @MockitoBean
     private JavaMailSender javaMailSender;
+
+    @MockitoBean
+    private KafkaTemplate<String, OrderNotificationMessage> kafkaTemplate;
 
     @Test
     void login_setsHttpOnlyCookieAndMeAcceptsCookieAuthentication() throws Exception {

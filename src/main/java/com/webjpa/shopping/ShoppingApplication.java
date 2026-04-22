@@ -1,13 +1,13 @@
 package com.webjpa.shopping;
 
 import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.data.elasticsearch.ElasticsearchRepositoriesAutoConfiguration;
-import org.springframework.boot.autoconfigure.data.elasticsearch.ReactiveElasticsearchRepositoriesAutoConfiguration;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.data.elasticsearch.autoconfigure.DataElasticsearchReactiveRepositoriesAutoConfiguration;
+import org.springframework.boot.data.elasticsearch.autoconfigure.DataElasticsearchRepositoriesAutoConfiguration;
 
 @SpringBootApplication(exclude = {
-        ElasticsearchRepositoriesAutoConfiguration.class,
-        ReactiveElasticsearchRepositoriesAutoConfiguration.class
+        DataElasticsearchRepositoriesAutoConfiguration.class,
+        DataElasticsearchReactiveRepositoriesAutoConfiguration.class
 })
 public class ShoppingApplication {
 

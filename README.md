@@ -33,7 +33,7 @@ Implemented features:
 ## Stack
 
 - Java 17
-- Spring Boot 3
+- Spring Boot 4
 - Spring Data JPA
 - Spring Data Elasticsearch
 - Spring Kafka

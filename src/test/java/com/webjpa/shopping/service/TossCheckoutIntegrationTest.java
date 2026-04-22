@@ -15,6 +15,7 @@ import com.webjpa.shopping.dto.PrepareCheckoutRequest;
 import com.webjpa.shopping.dto.PrepareCheckoutResponse;
 import com.webjpa.shopping.dto.ProductResponse;
 import com.webjpa.shopping.messaging.OrderNotificationEventPublisher;
+import com.webjpa.shopping.messaging.OrderNotificationMessage;
 import com.webjpa.shopping.messaging.OrderNotificationType;
 import com.webjpa.shopping.repository.PurchaseOrderRepository;
 import com.webjpa.shopping.search.ProductSearchRepository;
@@ -22,8 +23,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
@@ -65,20 +67,23 @@ class TossCheckoutIntegrationTest {
     @Autowired
     private PurchaseOrderRepository purchaseOrderRepository;
 
-    @MockBean
+    @MockitoBean
     private PaymentGateway paymentGateway;
 
-    @MockBean
+    @MockitoBean
     private ProductSearchIndexService productSearchIndexService;
 
-    @MockBean
+    @MockitoBean
     private ProductSearchRepository productSearchRepository;
 
-    @MockBean
+    @MockitoBean
     private JavaMailSender javaMailSender;
 
-    @MockBean
+    @MockitoBean
     private OrderNotificationEventPublisher orderNotificationEventPublisher;
+
+    @MockitoBean
+    private KafkaTemplate<String, OrderNotificationMessage> kafkaTemplate;
 
     @BeforeEach
     void setUp() {

@@ -62,10 +62,6 @@ export function LoginPanel({
     }
   }, [member, nextPath, router]);
 
-  useEffect(() => {
-    setMode(resolvedMode);
-  }, [resolvedMode]);
-
   const loginMutation = useMutation({
     mutationFn: login,
     onSuccess: (response) => {
