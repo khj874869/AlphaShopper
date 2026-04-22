@@ -23,8 +23,12 @@ app:
     reindex-on-startup: false
   kafka:
     auto-create-topics: false
+    retry:
+      max-attempts: 3
+      backoff-ms: 1000
     topics:
       order-notifications: order-notifications
+      order-notifications-dlt: order-notifications.DLT
   mail:
     from-address: test@alphashopper.local
   jwt:

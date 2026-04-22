@@ -264,6 +264,14 @@ Flow:
 Kafka topic:
 
 - `order-notifications`
+- `order-notifications.DLT`
+
+Kafka notification retry:
+
+- the consumer retries failed notification processing with `APP_KAFKA_NOTIFICATION_RETRY_MAX_ATTEMPTS`
+- retry delay is controlled by `APP_KAFKA_NOTIFICATION_RETRY_BACKOFF_MS`
+- after retries are exhausted, the original message is published to `APP_KAFKA_ORDER_NOTIFICATIONS_DLT_TOPIC`
+- the DLT topic should have at least the same partition count as the primary notification topic
 
 Notification triggers:
 
@@ -514,5 +522,5 @@ You can inspect captured emails there without using a real SMTP provider.
 - cookie-authenticated mutation requests use an `X-XSRF-TOKEN` header issued by `/api/auth/csrf`
 - relational schema is now managed through Flyway migrations instead of Hibernate `create-drop`
 - real production search would usually add aliases, analyzers, zero-downtime reindexing, and sync retry handling
-- real production Kafka would usually add retry topics, dead-letter topics, and observability
+- Kafka notification failures retry and then publish to a DLT; production still needs DLT monitoring and replay operations
 - real production PG integration would need idempotency, outbox, and compensation handling

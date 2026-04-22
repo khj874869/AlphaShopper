@@ -1,11 +1,16 @@
 package com.webjpa.shopping.config;
 
+import com.webjpa.shopping.logging.LogValues;
 import com.webjpa.shopping.messaging.OrderNotificationMessage;
 import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
@@ -15,16 +20,22 @@ import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaAdmin;
+import org.springframework.kafka.core.KafkaOperations;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
+import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
+import org.springframework.kafka.listener.DefaultErrorHandler;
 import org.springframework.kafka.support.serializer.JacksonJsonDeserializer;
 import org.springframework.kafka.support.serializer.JacksonJsonSerializer;
+import org.springframework.util.backoff.FixedBackOff;
 
 import java.util.HashMap;
 import java.util.Map;
 
 @Configuration
 public class KafkaConfig {
+
+    private static final Logger log = LoggerFactory.getLogger(KafkaConfig.class);
 
     @Bean
     @ConditionalOnMissingBean(KafkaAdmin.class)
@@ -73,11 +84,50 @@ public class KafkaConfig {
     @ConditionalOnMissingBean(name = "kafkaListenerContainerFactory")
     ConcurrentKafkaListenerContainerFactory<String, OrderNotificationMessage> kafkaListenerContainerFactory(
             ConsumerFactory<String, OrderNotificationMessage> consumerFactory,
+            DefaultErrorHandler orderNotificationErrorHandler,
             @Value("${spring.kafka.listener.auto-startup:true}") boolean autoStartup) {
         ConcurrentKafkaListenerContainerFactory<String, OrderNotificationMessage> factory =
                 new ConcurrentKafkaListenerContainerFactory<>();
         factory.setConsumerFactory(consumerFactory);
+        factory.setCommonErrorHandler(orderNotificationErrorHandler);
         factory.setAutoStartup(autoStartup);
         return factory;
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(DefaultErrorHandler.class)
+    DefaultErrorHandler orderNotificationErrorHandler(
+            KafkaOperations<String, OrderNotificationMessage> kafkaOperations,
+            @Value("${app.kafka.topics.order-notifications-dlt}") String deadLetterTopic,
+            @Value("${app.kafka.retry.max-attempts:3}") int maxAttempts,
+            @Value("${app.kafka.retry.backoff-ms:1000}") long backoffMs) {
+        DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(
+                kafkaOperations,
+                (record, ex) -> deadLetterTopicPartition(record, deadLetterTopic, ex)
+        );
+        long retryAttempts = Math.max(0, maxAttempts - 1L);
+        DefaultErrorHandler errorHandler = new DefaultErrorHandler(recoverer, new FixedBackOff(backoffMs, retryAttempts));
+        errorHandler.setRetryListeners((record, ex, deliveryAttempt) -> log.warn(
+                "event=order_notification.kafka.retry topic={} partition={} offset={} deliveryAttempt={} errorType={} error={}",
+                record.topic(),
+                record.partition(),
+                record.offset(),
+                deliveryAttempt,
+                ex.getClass().getSimpleName(),
+                LogValues.safe(ex.getMessage())
+        ));
+        return errorHandler;
+    }
+
+    private TopicPartition deadLetterTopicPartition(ConsumerRecord<?, ?> record, String deadLetterTopic, Exception ex) {
+        log.warn("event=order_notification.kafka.dlt topic={} partition={} offset={} deadLetterTopic={} errorType={} error={}",
+                record.topic(),
+                record.partition(),
+                record.offset(),
+                deadLetterTopic,
+                ex.getClass().getSimpleName(),
+                LogValues.safe(ex.getMessage()),
+                ex);
+        return new TopicPartition(deadLetterTopic, record.partition());
     }
 }

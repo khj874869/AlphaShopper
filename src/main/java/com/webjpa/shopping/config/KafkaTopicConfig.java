@@ -20,4 +20,13 @@ public class KafkaTopicConfig {
                 .replicas(1)
                 .build();
     }
+
+    @Bean
+    @ConditionalOnProperty(name = "app.kafka.auto-create-topics", havingValue = "true", matchIfMissing = true)
+    NewTopic orderNotificationsDltTopic(@Value("${app.kafka.topics.order-notifications-dlt}") String topicName) {
+        return TopicBuilder.name(topicName)
+                .partitions(1)
+                .replicas(1)
+                .build();
+    }
 }

@@ -60,6 +60,8 @@ Use this checklist before promoting AlphaShopper to a production-like environmen
 - [ ] `KAFKA_BOOTSTRAP_SERVERS` points to production Kafka.
 - [ ] `KAFKA_CONSUMER_GROUP_ID` is stable for the environment.
 - [ ] `APP_KAFKA_ORDER_NOTIFICATIONS_TOPIC` exists before app startup.
+- [ ] `APP_KAFKA_ORDER_NOTIFICATIONS_DLT_TOPIC` exists before app startup and has at least the same partition count as the primary topic.
+- [ ] Kafka notification retry settings are reviewed: `APP_KAFKA_NOTIFICATION_RETRY_MAX_ATTEMPTS`, `APP_KAFKA_NOTIFICATION_RETRY_BACKOFF_MS`.
 - [ ] `APP_KAFKA_AUTO_CREATE_TOPICS=false` in production.
 - [ ] Kafka producer and consumer credentials are configured if required by the platform.
 - [ ] `APP_MAIL_FROM_ADDRESS` uses an approved sender domain.
@@ -111,6 +113,7 @@ Use this checklist before promoting AlphaShopper to a production-like environmen
 - [ ] Prometheus scraping for `/actuator/prometheus` is healthy.
 - [ ] HTTP responses include `X-Request-Id`, and application logs include the same `requestId`.
 - [ ] Kafka consumer lag is monitored.
+- [ ] Kafka notification DLT depth is monitored and has a replay or manual resolution runbook.
 - [ ] Payment failure and webhook reconciliation logs are reviewed.
 - [ ] Checkout, payment, Kafka, email, and search logs are searchable by `event`, `requestId`, `orderId`, `memberId`, and `providerOrderId` where applicable.
 - [ ] Masked fields such as `paymentKey`, `transactionKey`, `trackingNumber`, and `recipient` do not expose raw secrets or personal email local parts.

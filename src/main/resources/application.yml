@@ -56,8 +56,12 @@ app:
     reindex-on-startup: ${APP_SEARCH_REINDEX_ON_STARTUP:false}
   kafka:
     auto-create-topics: ${APP_KAFKA_AUTO_CREATE_TOPICS:false}
+    retry:
+      max-attempts: ${APP_KAFKA_NOTIFICATION_RETRY_MAX_ATTEMPTS:3}
+      backoff-ms: ${APP_KAFKA_NOTIFICATION_RETRY_BACKOFF_MS:1000}
     topics:
       order-notifications: ${APP_KAFKA_ORDER_NOTIFICATIONS_TOPIC:order-notifications}
+      order-notifications-dlt: ${APP_KAFKA_ORDER_NOTIFICATIONS_DLT_TOPIC:order-notifications.DLT}
   mail:
     from-address: ${APP_MAIL_FROM_ADDRESS:no-reply@alphashopper.local}
   jwt:
