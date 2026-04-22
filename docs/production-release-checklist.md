@@ -109,9 +109,10 @@ Use this checklist before promoting AlphaShopper to a production-like environmen
 
 - [ ] Error rate and latency are monitored for backend APIs.
 - [ ] Prometheus scraping for `/actuator/prometheus` is healthy.
+- [ ] HTTP responses include `X-Request-Id`, and application logs include the same `requestId`.
 - [ ] Kafka consumer lag is monitored.
 - [ ] Payment failure and webhook reconciliation logs are reviewed.
-- [ ] Checkout, payment, Kafka, email, and search logs are searchable by `event`, `orderId`, `memberId`, and `providerOrderId` where applicable.
+- [ ] Checkout, payment, Kafka, email, and search logs are searchable by `event`, `requestId`, `orderId`, `memberId`, and `providerOrderId` where applicable.
 - [ ] Masked fields such as `paymentKey`, `transactionKey`, `trackingNumber`, and `recipient` do not expose raw secrets or personal email local parts.
 - [ ] Mail delivery failures are reviewed.
 - [ ] Elasticsearch errors and slow queries are reviewed.

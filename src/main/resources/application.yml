@@ -37,6 +37,8 @@ management:
         enabled: true
 
 logging:
+  pattern:
+    level: "%5p requestId=%X{requestId:-}"
   level:
     org.hibernate.SQL: ${APP_LOG_SQL_LEVEL:info}
 

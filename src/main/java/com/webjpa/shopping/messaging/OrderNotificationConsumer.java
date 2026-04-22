@@ -1,6 +1,7 @@
 package com.webjpa.shopping.messaging;
 
 import com.webjpa.shopping.logging.LogValues;
+import com.webjpa.shopping.logging.LoggingContext;
 import com.webjpa.shopping.service.MailNotificationService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,15 +21,17 @@ public class OrderNotificationConsumer {
 
     @KafkaListener(topics = "${app.kafka.topics.order-notifications}", groupId = "${spring.kafka.consumer.group-id}")
     public void consume(OrderNotificationMessage message) {
-        log.info("event=order_notification.kafka.consumed orderId={} memberId={} type={}",
-                message.orderId(), message.memberId(), message.type());
+        LoggingContext.putRequestId(message.requestId());
 
         try {
+            log.info("event=order_notification.kafka.consumed requestId={} orderId={} memberId={} type={}",
+                    LogValues.safe(message.requestId()), message.orderId(), message.memberId(), message.type());
             mailNotificationService.sendOrderNotification(message);
-            log.info("event=order_notification.kafka.processed orderId={} memberId={} type={}",
-                    message.orderId(), message.memberId(), message.type());
+            log.info("event=order_notification.kafka.processed requestId={} orderId={} memberId={} type={}",
+                    LogValues.safe(message.requestId()), message.orderId(), message.memberId(), message.type());
         } catch (RuntimeException ex) {
-            log.warn("event=order_notification.kafka.processing_failed orderId={} memberId={} type={} errorType={} error={}",
+            log.warn("event=order_notification.kafka.processing_failed requestId={} orderId={} memberId={} type={} errorType={} error={}",
+                    LogValues.safe(message.requestId()),
                     message.orderId(),
                     message.memberId(),
                     message.type(),
@@ -36,6 +39,8 @@ public class OrderNotificationConsumer {
                     LogValues.safe(ex.getMessage()),
                     ex);
             throw ex;
+        } finally {
+            LoggingContext.clearRequestId();
         }
     }
 }

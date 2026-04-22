@@ -201,6 +201,8 @@ Production guards:
 - Prometheus scraping should be restricted by the deployment network or ingress rules
 - operational logs use parseable `event=... key=value` fields for checkout, payment reconciliation, Kafka notification, email, and search indexing flows
 - payment keys, tracking numbers, and recipient emails are masked before being written to application logs
+- HTTP responses include `X-Request-Id`; incoming valid values are reused, otherwise the backend generates one
+- order notification messages carry `requestId` so Kafka consumer and mail logs can be correlated with the original HTTP request
 
 ## Front-end stack
 

@@ -15,7 +15,7 @@ public record OrderNotificationMessage(
         BigDecimal payAmount,
         String shippingAddress,
         String trackingNumber,
-        LocalDateTime occurredAt
+        LocalDateTime occurredAt,
+        String requestId
 ) {
 }
-

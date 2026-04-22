@@ -1,6 +1,7 @@
 package com.webjpa.shopping.messaging;
 
 import com.webjpa.shopping.domain.PurchaseOrder;
+import com.webjpa.shopping.logging.LoggingContext;
 
 import java.time.LocalDateTime;
 
@@ -20,7 +21,8 @@ public record OrderNotificationRequested(
                 order.getPayAmount(),
                 order.getShippingAddress(),
                 order.getTrackingNumber(),
-                LocalDateTime.now()
+                LocalDateTime.now(),
+                LoggingContext.currentRequestId()
         ));
     }
     private static String buildProductSummary(PurchaseOrder order) {

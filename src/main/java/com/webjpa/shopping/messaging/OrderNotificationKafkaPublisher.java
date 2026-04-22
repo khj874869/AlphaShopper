@@ -30,20 +30,21 @@ public class OrderNotificationKafkaPublisher {
     public void handle(OrderNotificationRequested event) {
         OrderNotificationMessage message = event.message();
         String messageKey = String.valueOf(message.orderId());
-        log.info("event=order_notification.kafka.publish.requested topic={} messageKey={} orderId={} memberId={} type={}",
-                topicName, messageKey, message.orderId(), message.memberId(), message.type());
+        log.info("event=order_notification.kafka.publish.requested requestId={} topic={} messageKey={} orderId={} memberId={} type={}",
+                LogValues.safe(message.requestId()), topicName, messageKey, message.orderId(), message.memberId(), message.type());
 
         CompletableFuture<SendResult<String, OrderNotificationMessage>> sendResult =
                 kafkaTemplate.send(topicName, messageKey, message);
         if (sendResult == null) {
-            log.debug("event=order_notification.kafka.publish.deferred topic={} messageKey={} orderId={} memberId={} type={} reason=send_result_unavailable",
-                    topicName, messageKey, message.orderId(), message.memberId(), message.type());
+            log.debug("event=order_notification.kafka.publish.deferred requestId={} topic={} messageKey={} orderId={} memberId={} type={} reason=send_result_unavailable",
+                    LogValues.safe(message.requestId()), topicName, messageKey, message.orderId(), message.memberId(), message.type());
             return;
         }
 
         sendResult.whenComplete((result, ex) -> {
             if (ex != null) {
-                log.warn("event=order_notification.kafka.publish.failed topic={} messageKey={} orderId={} memberId={} type={} errorType={} error={}",
+                log.warn("event=order_notification.kafka.publish.failed requestId={} topic={} messageKey={} orderId={} memberId={} type={} errorType={} error={}",
+                        LogValues.safe(message.requestId()),
                         topicName,
                         messageKey,
                         message.orderId(),
@@ -55,7 +56,8 @@ public class OrderNotificationKafkaPublisher {
                 return;
             }
 
-            log.info("event=order_notification.kafka.publish.completed topic={} messageKey={} orderId={} memberId={} type={} partition={} offset={}",
+            log.info("event=order_notification.kafka.publish.completed requestId={} topic={} messageKey={} orderId={} memberId={} type={} partition={} offset={}",
+                    LogValues.safe(message.requestId()),
                     topicName,
                     messageKey,
                     message.orderId(),

@@ -32,8 +32,12 @@ public class MailNotificationService {
         mailMessage.setText(buildBody(message));
         mailSender.send(mailMessage);
 
-        log.info("event=order_notification.email.sent orderId={} memberId={} type={} recipient={}",
-                message.orderId(), message.memberId(), message.type(), LogValues.maskEmail(message.recipientEmail()));
+        log.info("event=order_notification.email.sent requestId={} orderId={} memberId={} type={} recipient={}",
+                LogValues.safe(message.requestId()),
+                message.orderId(),
+                message.memberId(),
+                message.type(),
+                LogValues.maskEmail(message.recipientEmail()));
     }
 
     private String buildSubject(OrderNotificationType type, Long orderId) {
