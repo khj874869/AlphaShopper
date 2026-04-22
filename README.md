@@ -39,6 +39,8 @@ Implemented features:
 - Spring Kafka
 - Spring Mail
 - Spring Boot Actuator
+- Node.js 22.20.0
+- npm 10.9.x
 - Next.js App Router
 - TypeScript
 - TanStack Query
@@ -47,9 +49,23 @@ Implemented features:
 - H2 database
 - PostgreSQL
 - Apache Kafka 3.9.1
-- Elasticsearch 8.11.1
-- Kibana 8.11.1
+- Elasticsearch 9.2.6
+- Kibana 9.2.6
 - Mailpit
+
+## Required tools
+
+- Java 17+
+- Maven 3.9.9+ through the included Maven wrapper
+- Node.js 22.20.0 for the front-end app
+- npm 10.9.x
+- Docker Compose for local Kafka, Elasticsearch, Kibana, and Mailpit
+
+Use the repository [.nvmrc](/abs/path/C:/Users/S-P-041/Downloads/webjpa/.nvmrc) when switching Node versions:
+
+```bash
+nvm use
+```
 
 ## Start local infrastructure
 
