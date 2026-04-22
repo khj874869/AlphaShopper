@@ -158,6 +158,7 @@ This mode changes:
 3. Set Toss Payments credentials, storefront URL, and secure auth cookie settings using `APP_PAYMENT_TOSS_SECRET_KEY`, `APP_FRONTEND_BASE_URL`, and `APP_AUTH_COOKIE_SECURE=true`.
 4. Copy [frontend/.env.production.example](/abs/path/C:/Users/S-P-041/Downloads/webjpa/frontend/.env.production.example) into your front-end deployment environment.
 5. Build backend with `./mvnw clean package` and frontend with `cd frontend && npm run build`.
+6. Complete the production release checklist in [docs/production-release-checklist.md](/abs/path/C:/Users/S-P-041/Downloads/webjpa/docs/production-release-checklist.md).
 
 Production guards:
 
