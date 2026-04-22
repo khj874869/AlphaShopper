@@ -7,6 +7,7 @@ import com.webjpa.shopping.dto.DltReplayAuditResponse;
 import com.webjpa.shopping.dto.DltReplayResponse;
 import com.webjpa.shopping.repository.KafkaDltReplayAuditRepository;
 import com.webjpa.shopping.security.AuthenticatedMember;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -28,13 +29,19 @@ class OrderNotificationDltReplayAuditServiceTest {
 
     private OrderNotificationDltReplayService replayService;
     private KafkaDltReplayAuditRepository auditRepository;
+    private SimpleMeterRegistry meterRegistry;
     private OrderNotificationDltReplayAuditService auditService;
 
     @BeforeEach
     void setUp() {
         replayService = mock(OrderNotificationDltReplayService.class);
         auditRepository = mock(KafkaDltReplayAuditRepository.class);
-        auditService = new OrderNotificationDltReplayAuditService(replayService, auditRepository);
+        meterRegistry = new SimpleMeterRegistry();
+        auditService = new OrderNotificationDltReplayAuditService(
+                replayService,
+                auditRepository,
+                new OrderNotificationDltReplayMetrics(meterRegistry)
+        );
 
         when(replayService.sourceTopic()).thenReturn("orders.DLT");
         when(replayService.targetTopic()).thenReturn("orders");
@@ -78,6 +85,12 @@ class OrderNotificationDltReplayAuditServiceTest {
         assertThat(audit.getCommittedMessages()).isEqualTo(2);
         assertThat(audit.getFailedMessages()).isZero();
         assertThat(audit.getCompletedAt()).isNotNull();
+        assertThat(counterValue(OrderNotificationDltReplayMetrics.REQUESTS)).isEqualTo(1.0);
+        assertThat(counterValue(OrderNotificationDltReplayMetrics.RESULTS, "result", "succeeded")).isEqualTo(1.0);
+        assertThat(counterValue(OrderNotificationDltReplayMetrics.MESSAGES, "kind", "inspected")).isEqualTo(2.0);
+        assertThat(counterValue(OrderNotificationDltReplayMetrics.MESSAGES, "kind", "replayed")).isEqualTo(2.0);
+        assertThat(meterRegistry.find(OrderNotificationDltReplayMetrics.DURATION).tag("result", "succeeded").timer())
+                .isNotNull();
     }
 
     @Test
@@ -96,6 +109,10 @@ class OrderNotificationDltReplayAuditServiceTest {
         assertThat(audit.getFailedMessages()).isEqualTo(1);
         assertThat(audit.getLastError()).contains("IllegalStateException");
         assertThat(audit.getCompletedAt()).isNotNull();
+        assertThat(counterValue(OrderNotificationDltReplayMetrics.REQUESTS)).isEqualTo(1.0);
+        assertThat(counterValue(OrderNotificationDltReplayMetrics.RESULTS, "result", "exception")).isEqualTo(1.0);
+        assertThat(meterRegistry.find(OrderNotificationDltReplayMetrics.DURATION).tag("result", "exception").timer())
+                .isNotNull();
     }
 
     @Test
@@ -141,5 +158,9 @@ class OrderNotificationDltReplayAuditServiceTest {
                 "Admin",
                 MemberRole.ADMIN
         );
+    }
+
+    private double counterValue(String name, String... tags) {
+        return meterRegistry.find(name).tags(tags).counter().count();
     }
 }

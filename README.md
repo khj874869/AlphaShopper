@@ -203,6 +203,7 @@ Production guards:
 - payment keys, tracking numbers, and recipient emails are masked before being written to application logs
 - HTTP responses include `X-Request-Id`; incoming valid values are reused, otherwise the backend generates one
 - order notification messages carry `requestId` so Kafka consumer and mail logs can be correlated with the original HTTP request
+- DLT replay emits Prometheus metrics under `alphashopper_kafka_dlt_replay_*`
 
 ## Front-end stack
 
@@ -276,6 +277,7 @@ Kafka notification retry:
 - admins can inspect recent replay audit records with `GET /api/admin/kafka/order-notifications/dlt/replay/audits?limit=50`
 - DLT replay uses `APP_KAFKA_NOTIFICATION_DLT_REPLAY_CONSUMER_GROUP_ID` and commits DLT offsets only after publishing back to the primary topic succeeds
 - DLT replay audit records capture the admin, requested message count, inspected/replayed/committed/failed counts, status, timestamps, and last error
+- DLT replay Prometheus metrics include request count, result count, message counts by kind, and replay duration
 
 Notification triggers:
 

@@ -13,6 +13,8 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 
 @Service
@@ -22,11 +24,14 @@ public class OrderNotificationDltReplayAuditService {
 
     private final OrderNotificationDltReplayService replayService;
     private final KafkaDltReplayAuditRepository auditRepository;
+    private final OrderNotificationDltReplayMetrics replayMetrics;
 
     public OrderNotificationDltReplayAuditService(OrderNotificationDltReplayService replayService,
-                                                  KafkaDltReplayAuditRepository auditRepository) {
+                                                  KafkaDltReplayAuditRepository auditRepository,
+                                                  OrderNotificationDltReplayMetrics replayMetrics) {
         this.replayService = replayService;
         this.auditRepository = auditRepository;
+        this.replayMetrics = replayMetrics;
     }
 
     public DltReplayResponse replay(int maxMessages, boolean dryRun, AuthenticatedMember admin) {
@@ -41,11 +46,14 @@ public class OrderNotificationDltReplayAuditService {
                 maxMessages
         );
         auditRepository.save(audit);
+        replayMetrics.recordRequested(audit.getSourceTopic(), audit.getTargetTopic(), audit.isDryRun());
+        Instant startedAt = Instant.now();
 
         try {
             DltReplayResponse response = replayService.replay(maxMessages, dryRun);
             audit.complete(response);
             auditRepository.save(audit);
+            replayMetrics.recordCompleted(response, Duration.between(startedAt, Instant.now()));
             log.info("event=order_notification.dlt.replay_audit_completed auditId={} adminMemberId={} adminEmail={} status={} dryRun={} requestedMessages={} inspectedMessages={} replayedMessages={} committedMessages={} failedMessages={}",
                     audit.getId(),
                     audit.getAdminMemberId(),
@@ -61,6 +69,7 @@ public class OrderNotificationDltReplayAuditService {
         } catch (RuntimeException ex) {
             audit.fail(ex);
             auditRepository.save(audit);
+            replayMetrics.recordException(audit.getSourceTopic(), audit.getTargetTopic(), audit.isDryRun(), ex, Duration.between(startedAt, Instant.now()));
             log.warn("event=order_notification.dlt.replay_audit_failed auditId={} adminMemberId={} adminEmail={} errorType={} error={}",
                     audit.getId(),
                     audit.getAdminMemberId(),

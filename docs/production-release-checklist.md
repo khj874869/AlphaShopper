@@ -116,6 +116,7 @@ Use this checklist before promoting AlphaShopper to a production-like environmen
 - [ ] HTTP responses include `X-Request-Id`, and application logs include the same `requestId`.
 - [ ] Kafka consumer lag is monitored.
 - [ ] Kafka notification DLT depth is monitored and has a runbook using `POST /api/admin/kafka/order-notifications/dlt/replay` plus audit review through `GET /api/admin/kafka/order-notifications/dlt/replay/audits`.
+- [ ] DLT replay metrics are scraped from `/actuator/prometheus`, including `alphashopper_kafka_dlt_replay_requests_total`, `alphashopper_kafka_dlt_replay_results_total`, `alphashopper_kafka_dlt_replay_messages_total`, and `alphashopper_kafka_dlt_replay_duration_seconds`.
 - [ ] Payment failure and webhook reconciliation logs are reviewed.
 - [ ] Checkout, payment, Kafka, email, and search logs are searchable by `event`, `requestId`, `orderId`, `memberId`, and `providerOrderId` where applicable.
 - [ ] Masked fields such as `paymentKey`, `transactionKey`, `trackingNumber`, and `recipient` do not expose raw secrets or personal email local parts.
