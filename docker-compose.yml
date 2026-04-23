@@ -47,6 +47,21 @@ services:
       retries: 12
       start_period: 45s
 
+  redis:
+    image: redis:8.2.3-alpine
+    container_name: zigzag-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: ["redis-server", "--appendonly", "yes"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 5s
+
   mailpit:
     image: axllent/mailpit
     container_name: zigzag-mailpit
@@ -62,3 +77,4 @@ services:
 
 volumes:
   elasticsearch-data-9:
+  redis-data:

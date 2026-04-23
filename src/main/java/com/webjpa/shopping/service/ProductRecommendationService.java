@@ -41,6 +41,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -81,6 +82,7 @@ public class ProductRecommendationService {
     private final ObjectProvider<ProductSearchRepository> productSearchRepositoryProvider;
     private final ObjectProvider<ElasticsearchOperations> elasticsearchOperationsProvider;
     private final ObjectProvider<ProductSearchService> productSearchServiceProvider;
+    private final ObjectProvider<AiRecommendationCacheService> recommendationCacheServiceProvider;
     private final PopularityConfig popularityConfig;
     private final ExperimentConfig experimentConfig;
 
@@ -92,6 +94,7 @@ public class ProductRecommendationService {
                                         ObjectProvider<ProductSearchRepository> productSearchRepositoryProvider,
                                         ObjectProvider<ElasticsearchOperations> elasticsearchOperationsProvider,
                                         ObjectProvider<ProductSearchService> productSearchServiceProvider,
+                                        ObjectProvider<AiRecommendationCacheService> recommendationCacheServiceProvider,
                                         @Value("${app.ai.recommendation.click-signal.enabled:true}") boolean clickSignalEnabled,
                                         @Value("${app.ai.recommendation.click-signal.window-days:30}") int clickSignalWindowDays,
                                         @Value("${app.ai.recommendation.click-signal.boost-per-click:2}") int clickSignalBoostPerClick,
@@ -119,6 +122,7 @@ public class ProductRecommendationService {
         this.productSearchRepositoryProvider = productSearchRepositoryProvider;
         this.elasticsearchOperationsProvider = elasticsearchOperationsProvider;
         this.productSearchServiceProvider = productSearchServiceProvider;
+        this.recommendationCacheServiceProvider = recommendationCacheServiceProvider;
         this.popularityConfig = PopularityConfig.of(
                 clickSignalEnabled,
                 clickSignalWindowDays,
@@ -143,6 +147,14 @@ public class ProductRecommendationService {
 
     public ProductRecommendationResult recommend(String prompt, Long memberId, Integer requestedLimit) {
         int limit = normalizeLimit(requestedLimit);
+        AiRecommendationCacheService recommendationCacheService = recommendationCacheServiceProvider.getIfAvailable();
+        if (recommendationCacheService != null) {
+            Optional<ProductRecommendationResult> cachedResult = recommendationCacheService.get(prompt, memberId, limit);
+            if (cachedResult.isPresent()) {
+                return cachedResult.get();
+            }
+        }
+
         Set<String> queryTerms = extractQueryTerms(prompt);
         PersonalizationProfile profile = loadPersonalizationProfile(memberId);
         CandidateSet candidateSet = loadCandidates(prompt, queryTerms);
@@ -171,7 +183,12 @@ public class ProductRecommendationService {
                         scored.highlights()
                 ))
                 .toList();
-        return new ProductRecommendationResult(recommendations, candidateSet.source(), recommendationBucket);
+        ProductRecommendationResult result =
+                new ProductRecommendationResult(recommendations, candidateSet.source(), recommendationBucket);
+        if (recommendationCacheService != null) {
+            recommendationCacheService.put(prompt, memberId, limit, result);
+        }
+        return result;
     }
 
     public AiRecommendationSettingsResponse settings() {

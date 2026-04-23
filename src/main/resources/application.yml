@@ -22,6 +22,13 @@ spring:
     elasticsearch:
       repositories:
         enabled: ${app.search.enabled:false}
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: ${REDIS_TIMEOUT:2s}
+      repositories:
+        enabled: false
 
 server:
   port: ${SERVER_PORT:8080}
@@ -55,6 +62,9 @@ app:
     enabled: ${APP_SEARCH_ENABLED:false}
     reindex-on-startup: ${APP_SEARCH_REINDEX_ON_STARTUP:false}
     recreate-index-on-reindex: ${APP_SEARCH_RECREATE_INDEX_ON_REINDEX:false}
+  redis:
+    enabled: ${APP_REDIS_ENABLED:false}
+    key-prefix: ${APP_REDIS_KEY_PREFIX:alphashopper}
   kafka:
     auto-create-topics: ${APP_KAFKA_AUTO_CREATE_TOPICS:false}
     retry:
@@ -81,6 +91,10 @@ app:
       api-base-url: ${APP_PAYMENT_TOSS_API_BASE_URL:https://api.tosspayments.com}
       secret-key: ${APP_PAYMENT_TOSS_SECRET_KEY:}
   ai:
+    rate-limit:
+      enabled: ${APP_AI_RATE_LIMIT_ENABLED:true}
+      window-seconds: ${APP_AI_RATE_LIMIT_WINDOW_SECONDS:60}
+      max-requests: ${APP_AI_RATE_LIMIT_MAX_REQUESTS:30}
     llm:
       enabled: ${APP_AI_LLM_ENABLED:false}
       base-url: ${APP_AI_LLM_BASE_URL:}
@@ -88,6 +102,10 @@ app:
       model: ${APP_AI_LLM_MODEL:internal-shopping-assistant}
       timeout-ms: ${APP_AI_LLM_TIMEOUT_MS:8000}
     recommendation:
+      cache:
+        enabled: ${APP_AI_RECOMMENDATION_CACHE_ENABLED:true}
+        ttl-seconds: ${APP_AI_RECOMMENDATION_CACHE_TTL_SECONDS:120}
+        cache-personalized: ${APP_AI_RECOMMENDATION_CACHE_PERSONALIZED:false}
       click-signal:
         enabled: ${APP_AI_RECOMMENDATION_CLICK_SIGNAL_ENABLED:true}
         window-days: ${APP_AI_RECOMMENDATION_CLICK_SIGNAL_WINDOW_DAYS:30}

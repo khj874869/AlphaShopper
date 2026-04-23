@@ -49,6 +49,8 @@ class ProductRecommendationServiceTest {
             org.mockito.Mockito.mock(ObjectProvider.class);
     private final ObjectProvider<ProductSearchService> productSearchServiceProvider =
             org.mockito.Mockito.mock(ObjectProvider.class);
+    private final ObjectProvider<AiRecommendationCacheService> recommendationCacheServiceProvider =
+            org.mockito.Mockito.mock(ObjectProvider.class);
     private final ProductRecommendationService productRecommendationService = productRecommendationService(true, 2, 8, 2);
 
     @Test
@@ -269,6 +271,7 @@ class ProductRecommendationServiceTest {
                 productSearchRepositoryProvider,
                 elasticsearchOperationsProvider,
                 productSearchServiceProvider,
+                recommendationCacheServiceProvider,
                 clickSignalEnabled,
                 30,
                 boostPerClick,
@@ -324,6 +327,7 @@ class ProductRecommendationServiceTest {
                 productSearchRepositoryProvider,
                 elasticsearchOperationsProvider,
                 productSearchServiceProvider,
+                recommendationCacheServiceProvider,
                 clickSignalEnabled,
                 30,
                 boostPerClick,

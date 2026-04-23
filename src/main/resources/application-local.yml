@@ -47,6 +47,8 @@ logging:
     org.hibernate.SQL: debug
 
 app:
+  redis:
+    enabled: true
   search:
     enabled: true
     reindex-on-startup: true

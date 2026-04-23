@@ -7,6 +7,10 @@ spring:
       group-id: test-order-notification-group
     listener:
       auto-startup: false
+  data:
+    redis:
+      repositories:
+        enabled: false
   jpa:
     open-in-view: false
 
