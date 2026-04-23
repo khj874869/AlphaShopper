@@ -29,6 +29,7 @@ Implemented features:
 - Elasticsearch product indexing and search
 - Kafka-based order event processing
 - SMTP mail notifications via Mailpit
+- Internal LLM-backed shopping chatbot with product recommendations
 
 ## Stack
 
@@ -222,7 +223,135 @@ The web app includes:
 - cart and checkout rail
 - order board with refund and delivery actions
 - optional demo account shortcuts in local front-end env only
+- internal shopping AI panel with chatbot replies and catalog recommendations
 - Toss Payments success and failure return pages for hosted checkout
+- admin AI operations page for reviewing chatbot and recommendation quality
+
+## Internal LLM shopping AI
+
+The backend exposes two AI endpoints:
+
+```http
+POST /api/ai/chat
+Content-Type: application/json
+
+{
+  "message": "출근룩에 어울리는 상품 추천해줘",
+  "memberId": 1,
+  "maxRecommendations": 4
+}
+```
+
+```http
+POST /api/ai/recommendations
+Content-Type: application/json
+
+{
+  "prompt": "5만원대 데일리 상품",
+  "memberId": 1,
+  "maxResults": 4
+}
+```
+
+`memberId` is optional. When present, the caller must be authenticated as that member or as an admin, and recommendations include recent cart and order signals. Without `memberId`, the endpoints return public catalog-based recommendations.
+
+`/api/ai/chat` uses the configured internal LLM when enabled, and always returns product recommendations computed from the active product catalog. If the LLM is disabled or unavailable, the response falls back to a deterministic catalog-based reply so the UI remains usable.
+
+AI recommendations use Elasticsearch first when `APP_SEARCH_ENABLED=true` and the `products` index is available. The service builds a keyword query from the shopper prompt, expands common Korean shopping terms into catalog terms, retrieves matching product IDs from Elasticsearch, hydrates those IDs from the relational product table, and then applies personalization scoring. If Elasticsearch is disabled, unavailable, or returns no usable active products, recommendations fall back to the relational product catalog.
+
+AI chat, recommendation, and admin interaction-log responses include `recommendationSource` with either `ELASTICSEARCH` or `DATABASE`, so operators can verify whether the recommendation came from the search index or the fallback catalog path.
+
+The `products` index uses a shopping-specific analyzer with Korean/English synonym expansion for terms such as `청바지/denim`, `가방/bag`, `오피스룩/clean`, and `로퍼/loafer`. The setting file is stored at `src/main/resources/elasticsearch/product-settings.json`.
+
+Product search responses include Elasticsearch relevance metadata when search is backed by ES:
+
+- `searchScore`: the `_score` returned by Elasticsearch
+- `highlights`: short snippets with matched terms wrapped in `[[...]]`
+
+AI recommendation product entries expose the same fields when recommendations are sourced from Elasticsearch, and the LLM prompt context includes that score/snippet evidence.
+
+Recent discovery clicks and result impressions are used as bounded popularity signals inside AI recommendation scoring. The defaults look at 30 days of click logs, add 2 points per click up to 8 points, add a small extra boost when the clicked item had a strong rank position, and use recent CTR after at least 5 impressions. High CTR adds up to 3 points, mid CTR adds 1 point, and very low CTR after enough exposure subtracts 1 point. Low CTR handling defaults to `PENALIZE`; set it to `EXCLUDE` to remove low-CTR treatment-bucket products from recommendations after the minimum impression threshold. Tune or disable that feedback loop with:
+
+- `APP_AI_RECOMMENDATION_CLICK_SIGNAL_ENABLED=true`
+- `APP_AI_RECOMMENDATION_CLICK_SIGNAL_WINDOW_DAYS=30`
+- `APP_AI_RECOMMENDATION_CLICK_SIGNAL_BOOST_PER_CLICK=2`
+- `APP_AI_RECOMMENDATION_CLICK_SIGNAL_MAX_CLICK_BOOST=8`
+- `APP_AI_RECOMMENDATION_CLICK_SIGNAL_TOP_RANK_THRESHOLD=2.0`
+- `APP_AI_RECOMMENDATION_CLICK_SIGNAL_TOP_RANK_BOOST=2`
+- `APP_AI_RECOMMENDATION_CLICK_SIGNAL_MID_RANK_THRESHOLD=5.0`
+- `APP_AI_RECOMMENDATION_CLICK_SIGNAL_MID_RANK_BOOST=1`
+- `APP_AI_RECOMMENDATION_CTR_SIGNAL_ENABLED=true`
+- `APP_AI_RECOMMENDATION_CTR_SIGNAL_MIN_IMPRESSIONS=5`
+- `APP_AI_RECOMMENDATION_CTR_SIGNAL_HIGH_THRESHOLD=0.35`
+- `APP_AI_RECOMMENDATION_CTR_SIGNAL_HIGH_BOOST=3`
+- `APP_AI_RECOMMENDATION_CTR_SIGNAL_MID_THRESHOLD=0.15`
+- `APP_AI_RECOMMENDATION_CTR_SIGNAL_MID_BOOST=1`
+- `APP_AI_RECOMMENDATION_CTR_SIGNAL_LOW_THRESHOLD=0.03`
+- `APP_AI_RECOMMENDATION_CTR_SIGNAL_LOW_PENALTY=1`
+- `APP_AI_RECOMMENDATION_CTR_SIGNAL_LOW_ACTION=PENALIZE`
+- `APP_AI_RECOMMENDATION_EXPERIMENT_ENABLED=false`
+- `APP_AI_RECOMMENDATION_EXPERIMENT_CTR_TREATMENT_PERCENT=50`
+
+Search and AI recommendation result impressions are logged with `POST /api/analytics/product-impressions`; product detail transitions are logged with `POST /api/analytics/product-clicks`. The `/admin/ai` UI compares those two streams to show search CTR, AI recommendation CTR, top clicked products, and recent click traces.
+
+AI recommendation responses and AI Ops logs include `recommendationBucket`. When the experiment is disabled, CTR-enabled recommendations use `CTR_RANKING`; when enabled, a deterministic hash assigns traffic to `CONTROL` or `CTR_RANKING` using `APP_AI_RECOMMENDATION_EXPERIMENT_CTR_TREATMENT_PERCENT`.
+
+Local ES verification flow:
+
+```bash
+docker compose up -d elasticsearch
+./mvnw spring-boot:run
+curl -X POST http://localhost:8080/api/products/search/reindex
+```
+
+The `local` profile already defaults to `app.search.enabled=true` and `app.search.reindex-on-startup=true`, so a normal local startup will reindex seeded products when Elasticsearch is running.
+
+Analyzer or mapping changes require recreating the Elasticsearch index before reindexing. Use `APP_SEARCH_RECREATE_INDEX_ON_REINDEX=true` locally or during a controlled maintenance window; keep it `false` for normal production startup.
+
+Internal LLM settings:
+
+- `APP_AI_LLM_ENABLED=false`
+- `APP_AI_LLM_BASE_URL=` OpenAI-compatible gateway base URL, for example `http://localhost:11434`
+- `APP_AI_LLM_API_KEY=` optional bearer token
+- `APP_AI_LLM_MODEL=internal-shopping-assistant`
+- `APP_AI_LLM_TIMEOUT_MS=8000`
+
+The LLM gateway is expected to support `POST /v1/chat/completions`.
+
+Admin AI quality APIs:
+
+```http
+GET /api/admin/ai/interactions?limit=50
+```
+
+Optional query filters:
+
+- `recommendationSource=ELASTICSEARCH` or `DATABASE`
+- `recommendationBucket=DEFAULT`, `CONTROL`, or `CTR_RANKING`
+- `llmUsed=true` or `false`
+- `reviewStatus=REVIEWED`, `UNREVIEWED`, or `LOW_SCORE`
+
+```http
+PATCH /api/admin/ai/interactions/1/review
+Content-Type: application/json
+
+{
+  "qualityScore": 5,
+  "qualityNote": "Relevant recommendations and concise reply"
+}
+```
+
+Only admin accounts can access these endpoints. The web UI is available at `/admin/ai`.
+
+Discovery funnel APIs for the AI Ops page:
+
+```http
+GET /api/admin/ai/discovery-funnel
+GET /api/admin/ai/product-clicks?limit=100
+GET /api/admin/ai/product-impressions?limit=100
+```
+
+These endpoints support optional `surface=SEARCH` or `AI_RECOMMENDATION`, `recommendationSource=ELASTICSEARCH` or `DATABASE`, `recommendationBucket=DEFAULT`, `CONTROL`, or `CTR_RANKING`, and ISO date-time `from`/`to` filters. The summary endpoint returns server-side impression, click, and CTR totals plus surface/source/bucket segments, top products, and a capped daily CTR trend when `from` is provided. The AI Ops UI uses those bucket segments to show CTR lift against the control bucket.
 
 ## Toss Payments flow
 

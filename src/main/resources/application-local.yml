@@ -50,6 +50,7 @@ app:
   search:
     enabled: true
     reindex-on-startup: true
+    recreate-index-on-reindex: true
   kafka:
     auto-create-topics: true
   seed:

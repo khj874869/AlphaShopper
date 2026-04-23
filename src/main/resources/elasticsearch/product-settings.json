@@ -1,0 +1,46 @@
+{
+  "analysis": {
+    "filter": {
+      "shopping_synonyms": {
+        "type": "synonym_graph",
+        "synonyms": [
+          "청바지, 데님, denim",
+          "바지, pants",
+          "니트, knit",
+          "가방, 백, bag",
+          "숄더백, shoulder bag",
+          "자켓, 재킷, jacket",
+          "가죽자켓, 레더자켓, leather jacket",
+          "아우터, outer",
+          "스커트, 치마, skirt",
+          "플리츠, pleats",
+          "신발, 슈즈, shoes",
+          "로퍼, loafer",
+          "출근룩, 오피스룩, weekday, clean",
+          "데일리, daily, basic",
+          "캐주얼, casual",
+          "데이트룩, date look"
+        ]
+      }
+    },
+    "analyzer": {
+      "shopping_index_analyzer": {
+        "type": "custom",
+        "tokenizer": "standard",
+        "filter": [
+          "lowercase",
+          "asciifolding"
+        ]
+      },
+      "shopping_search_analyzer": {
+        "type": "custom",
+        "tokenizer": "standard",
+        "filter": [
+          "lowercase",
+          "asciifolding",
+          "shopping_synonyms"
+        ]
+      }
+    }
+  }
+}

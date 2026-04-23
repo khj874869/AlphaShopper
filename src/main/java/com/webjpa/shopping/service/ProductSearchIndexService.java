@@ -28,17 +28,20 @@ public class ProductSearchIndexService {
     private final ObjectProvider<ElasticsearchOperations> elasticsearchOperationsProvider;
     private final boolean searchEnabled;
     private final boolean reindexOnStartup;
+    private final boolean recreateIndexOnReindex;
 
     public ProductSearchIndexService(ProductRepository productRepository,
                                      ObjectProvider<ProductSearchRepository> productSearchRepositoryProvider,
                                      ObjectProvider<ElasticsearchOperations> elasticsearchOperationsProvider,
                                      @Value("${app.search.enabled:true}") boolean searchEnabled,
-                                     @Value("${app.search.reindex-on-startup:true}") boolean reindexOnStartup) {
+                                     @Value("${app.search.reindex-on-startup:true}") boolean reindexOnStartup,
+                                     @Value("${app.search.recreate-index-on-reindex:false}") boolean recreateIndexOnReindex) {
         this.productRepository = productRepository;
         this.productSearchRepositoryProvider = productSearchRepositoryProvider;
         this.elasticsearchOperationsProvider = elasticsearchOperationsProvider;
         this.searchEnabled = searchEnabled;
         this.reindexOnStartup = reindexOnStartup;
+        this.recreateIndexOnReindex = recreateIndexOnReindex;
     }
 
     public void index(Product product) {
@@ -53,7 +56,7 @@ public class ProductSearchIndexService {
             return;
         }
 
-        ensureIndex();
+        ensureIndex(false);
         productSearchRepository.save(ProductDocument.from(product));
         log.debug("event=product_search.index.saved productId={} active={}", product.getId(), product.isActive());
     }
@@ -70,7 +73,7 @@ public class ProductSearchIndexService {
             return 0L;
         }
 
-        ensureIndex();
+        ensureIndex(recreateIndexOnReindex);
         List<ProductDocument> documents = productRepository.findAll().stream()
                 .map(ProductDocument::from)
                 .toList();
@@ -99,15 +102,19 @@ public class ProductSearchIndexService {
         }
     }
 
-    private void ensureIndex() {
+    private void ensureIndex(boolean recreateExistingIndex) {
         ElasticsearchOperations elasticsearchOperations = elasticsearchOperationsProvider.getIfAvailable();
         if (elasticsearchOperations == null) {
             return;
         }
 
         IndexOperations indexOperations = elasticsearchOperations.indexOps(ProductDocument.class);
-        if (indexOperations.exists()) {
+        if (indexOperations.exists() && !recreateExistingIndex) {
             return;
+        }
+        if (indexOperations.exists()) {
+            indexOperations.delete();
+            log.info("event=product_search.index.deleted documentType={}", ProductDocument.class.getSimpleName());
         }
 
         indexOperations.create();

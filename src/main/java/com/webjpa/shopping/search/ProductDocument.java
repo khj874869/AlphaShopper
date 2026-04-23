@@ -5,22 +5,24 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.elasticsearch.annotations.Document;
 import org.springframework.data.elasticsearch.annotations.Field;
 import org.springframework.data.elasticsearch.annotations.FieldType;
+import org.springframework.data.elasticsearch.annotations.Setting;
 
 import java.math.BigDecimal;
 
 @Document(indexName = "products")
+@Setting(settingPath = "/elasticsearch/product-settings.json")
 public class ProductDocument {
 
     @Id
     private Long id;
 
-    @Field(type = FieldType.Text)
+    @Field(type = FieldType.Text, analyzer = "shopping_index_analyzer", searchAnalyzer = "shopping_search_analyzer")
     private String name;
 
-    @Field(type = FieldType.Text)
+    @Field(type = FieldType.Text, analyzer = "shopping_index_analyzer", searchAnalyzer = "shopping_search_analyzer")
     private String brand;
 
-    @Field(type = FieldType.Text)
+    @Field(type = FieldType.Text, analyzer = "shopping_index_analyzer", searchAnalyzer = "shopping_search_analyzer")
     private String description;
 
     @Field(type = FieldType.Keyword)

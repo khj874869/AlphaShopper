@@ -1,13 +1,22 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { addCartItem, getCoupons, getOrders, getProducts, searchProducts } from "@/lib/api";
+import {
+  addCartItem,
+  getCoupons,
+  getOrders,
+  getProducts,
+  recordProductDiscoveryClick,
+  recordProductDiscoveryImpressions,
+  searchProducts
+} from "@/lib/api";
 import { buildAuthPath } from "@/lib/auth";
 import { formatCurrency } from "@/lib/format";
 import { DEMO_ACCOUNTS_ENABLED } from "@/lib/runtime";
 import { useSessionStore } from "@/store/session-store";
+import { AiShoppingAssistant } from "@/components/ai-shopping-assistant";
 import { ProductVisual } from "@/components/product-visual";
 import type { ProductResponse } from "@/lib/types";
 
@@ -17,6 +26,7 @@ export function HomeView() {
   const member = useSessionStore((state) => state.member);
   const [keyword, setKeyword] = useState("denim");
   const queryClient = useQueryClient();
+  const recordedImpressionsRef = useRef(new Set<string>());
 
   const { data: products } = useQuery({
     queryKey: ["products"],
@@ -45,6 +55,35 @@ export function HomeView() {
   });
 
   const featuredProducts = useMemo(() => (products ?? []).slice(0, 3), [products]);
+  const trimmedKeyword = keyword.trim();
+
+  useEffect(() => {
+    if (!trimmedKeyword || !searchResult?.content.length) {
+      return;
+    }
+
+    const productIds = searchResult.content.map((product) => product.id).join(",");
+    const impressionKey = `home-search:${trimmedKeyword}:${productIds}`;
+    if (recordedImpressionsRef.current.has(impressionKey)) {
+      return;
+    }
+    recordedImpressionsRef.current.add(impressionKey);
+
+    void recordProductDiscoveryImpressions({
+      impressions: searchResult.content.map((product, index) => ({
+        memberId: member?.id,
+        surface: "SEARCH",
+        query: trimmedKeyword,
+        productId: product.id,
+        productName: product.name,
+        recommendationSource: "ELASTICSEARCH",
+        searchScore: product.searchScore,
+        rankPosition: index + 1,
+        highlights: product.highlights,
+        impressionKey
+      }))
+    }).catch(() => undefined);
+  }, [member?.id, searchResult, trimmedKeyword]);
 
   return (
     <div className="page-stack">
@@ -90,6 +129,8 @@ export function HomeView() {
         </div>
       </section>
 
+      <AiShoppingAssistant />
+
       {!member ? (
         <section className="panel auth-callout">
           <div>
@@ -128,12 +169,25 @@ export function HomeView() {
           <input value={keyword} onChange={(event) => setKeyword(event.target.value)} />
         </label>
         <div className="product-grid">
-          {searchResult?.content.map((product) => (
+          {searchResult?.content.map((product, index) => (
             <ProductTile
               key={product.id}
               product={product}
               canAdd={Boolean(member)}
               onAdd={() => addToCartMutation.mutate(product.id)}
+              onView={() => {
+                void recordProductDiscoveryClick({
+                  memberId: member?.id,
+                  surface: "SEARCH",
+                  query: trimmedKeyword,
+                  productId: product.id,
+                  productName: product.name,
+                  recommendationSource: "ELASTICSEARCH",
+                  searchScore: product.searchScore,
+                  rankPosition: index + 1,
+                  highlights: product.highlights
+                }).catch(() => undefined);
+              }}
             />
           ))}
         </div>
@@ -214,11 +268,16 @@ export function HomeView() {
 function ProductTile({
   product,
   canAdd,
-  onAdd
+  onAdd,
+  onView
 }: {
-  product: Pick<ProductResponse, "id" | "name" | "brand" | "price" | "description" | "imageUrl">;
+  product: Pick<ProductResponse, "id" | "name" | "brand" | "price" | "description" | "imageUrl"> & {
+    searchScore?: number | null;
+    highlights?: string[];
+  };
   canAdd: boolean;
   onAdd: () => void;
+  onView?: () => void;
 }) {
   return (
     <article className="product-card">
@@ -230,9 +289,17 @@ function ProductTile({
           <span>{formatCurrency(product.price)}</span>
         </div>
         <p className="muted">{product.description}</p>
+        {product.searchScore ? <small className="search-score">Score {product.searchScore.toFixed(2)}</small> : null}
+        {product.highlights?.length ? (
+          <div className="search-highlights">
+            {product.highlights.slice(0, 2).map((highlight) => (
+              <p key={highlight}>{renderHighlight(highlight)}</p>
+            ))}
+          </div>
+        ) : null}
       </div>
       <div className="product-card__actions">
-        <Link className="button button--ghostDark" href={`/products/${product.id}`}>
+        <Link className="button button--ghostDark" href={`/products/${product.id}`} onClick={onView}>
           Detail
         </Link>
         {canAdd ? (
@@ -247,4 +314,13 @@ function ProductTile({
       </div>
     </article>
   );
+}
+
+function renderHighlight(value: string) {
+  return value.split(/(\[\[.*?\]\])/g).map((part, index) => {
+    if (part.startsWith("[[") && part.endsWith("]]")) {
+      return <mark key={`${part}-${index}`}>{part.slice(2, -2)}</mark>;
+    }
+    return <span key={`${part}-${index}`}>{part}</span>;
+  });
 }

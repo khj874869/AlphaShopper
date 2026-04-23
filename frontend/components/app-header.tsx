@@ -49,6 +49,15 @@ export function AppHeader() {
               {item.label}
             </Link>
           ))}
+          {member?.role === "ADMIN" ? (
+            <Link
+              href="/admin/ai"
+              aria-current={pathname === "/admin/ai" ? "page" : undefined}
+              className={pathname === "/admin/ai" ? "is-active" : undefined}
+            >
+              AI Ops
+            </Link>
+          ) : null}
         </nav>
       </div>
       <div className="auth-bar">

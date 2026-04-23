@@ -54,6 +54,7 @@ app:
   search:
     enabled: ${APP_SEARCH_ENABLED:false}
     reindex-on-startup: ${APP_SEARCH_REINDEX_ON_STARTUP:false}
+    recreate-index-on-reindex: ${APP_SEARCH_RECREATE_INDEX_ON_REINDEX:false}
   kafka:
     auto-create-topics: ${APP_KAFKA_AUTO_CREATE_TOPICS:false}
     retry:
@@ -79,3 +80,33 @@ app:
     toss:
       api-base-url: ${APP_PAYMENT_TOSS_API_BASE_URL:https://api.tosspayments.com}
       secret-key: ${APP_PAYMENT_TOSS_SECRET_KEY:}
+  ai:
+    llm:
+      enabled: ${APP_AI_LLM_ENABLED:false}
+      base-url: ${APP_AI_LLM_BASE_URL:}
+      api-key: ${APP_AI_LLM_API_KEY:}
+      model: ${APP_AI_LLM_MODEL:internal-shopping-assistant}
+      timeout-ms: ${APP_AI_LLM_TIMEOUT_MS:8000}
+    recommendation:
+      click-signal:
+        enabled: ${APP_AI_RECOMMENDATION_CLICK_SIGNAL_ENABLED:true}
+        window-days: ${APP_AI_RECOMMENDATION_CLICK_SIGNAL_WINDOW_DAYS:30}
+        boost-per-click: ${APP_AI_RECOMMENDATION_CLICK_SIGNAL_BOOST_PER_CLICK:2}
+        max-click-boost: ${APP_AI_RECOMMENDATION_CLICK_SIGNAL_MAX_CLICK_BOOST:8}
+        top-rank-threshold: ${APP_AI_RECOMMENDATION_CLICK_SIGNAL_TOP_RANK_THRESHOLD:2.0}
+        top-rank-boost: ${APP_AI_RECOMMENDATION_CLICK_SIGNAL_TOP_RANK_BOOST:2}
+        mid-rank-threshold: ${APP_AI_RECOMMENDATION_CLICK_SIGNAL_MID_RANK_THRESHOLD:5.0}
+        mid-rank-boost: ${APP_AI_RECOMMENDATION_CLICK_SIGNAL_MID_RANK_BOOST:1}
+      ctr-signal:
+        enabled: ${APP_AI_RECOMMENDATION_CTR_SIGNAL_ENABLED:true}
+        min-impressions: ${APP_AI_RECOMMENDATION_CTR_SIGNAL_MIN_IMPRESSIONS:5}
+        high-threshold: ${APP_AI_RECOMMENDATION_CTR_SIGNAL_HIGH_THRESHOLD:0.35}
+        high-boost: ${APP_AI_RECOMMENDATION_CTR_SIGNAL_HIGH_BOOST:3}
+        mid-threshold: ${APP_AI_RECOMMENDATION_CTR_SIGNAL_MID_THRESHOLD:0.15}
+        mid-boost: ${APP_AI_RECOMMENDATION_CTR_SIGNAL_MID_BOOST:1}
+        low-threshold: ${APP_AI_RECOMMENDATION_CTR_SIGNAL_LOW_THRESHOLD:0.03}
+        low-penalty: ${APP_AI_RECOMMENDATION_CTR_SIGNAL_LOW_PENALTY:1}
+        low-action: ${APP_AI_RECOMMENDATION_CTR_SIGNAL_LOW_ACTION:PENALIZE}
+      experiment:
+        enabled: ${APP_AI_RECOMMENDATION_EXPERIMENT_ENABLED:false}
+        ctr-treatment-percent: ${APP_AI_RECOMMENDATION_EXPERIMENT_CTR_TREATMENT_PERCENT:50}

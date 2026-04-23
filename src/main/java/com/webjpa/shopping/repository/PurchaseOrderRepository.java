@@ -29,7 +29,6 @@ public interface PurchaseOrderRepository extends JpaRepository<PurchaseOrder, Lo
             where o.payment.paymentReference = :providerOrderId
             """)
     Optional<PurchaseOrder> findDetailByProviderOrderId(@Param("providerOrderId") String providerOrderId);
-
     @Query("""
             select distinct o
             from PurchaseOrder o
@@ -38,4 +37,13 @@ public interface PurchaseOrderRepository extends JpaRepository<PurchaseOrder, Lo
             order by o.orderedAt desc
             """)
     List<PurchaseOrder> findSummariesByMemberId(@Param("memberId") Long memberId);
+
+    @Query("""
+            select distinct o
+            from PurchaseOrder o
+            left join fetch o.items
+            where o.member.id = :memberId
+            order by o.orderedAt desc
+            """)
+    List<PurchaseOrder> findDetailsByMemberId(@Param("memberId") Long memberId);
 }

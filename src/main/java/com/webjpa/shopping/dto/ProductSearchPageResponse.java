@@ -24,5 +24,21 @@ public record ProductSearchPageResponse(
                 result.getContent()
         );
     }
-}
 
+    public static ProductSearchPageResponse fromContent(String keyword,
+                                                        int page,
+                                                        int size,
+                                                        long totalElements,
+                                                        List<ProductSearchResponse> content) {
+        int totalPages = size <= 0 ? 0 : (int) Math.ceil((double) totalElements / size);
+        return new ProductSearchPageResponse(
+                keyword,
+                page,
+                size,
+                totalElements,
+                totalPages,
+                page + 1 < totalPages,
+                content
+        );
+    }
+}

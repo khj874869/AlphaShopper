@@ -1,6 +1,14 @@
 import type {
   AddCartItemRequest,
   ApiErrorResponse,
+  AiChatRequest,
+  AiChatResponse,
+  AiInteractionLogFilters,
+  AiInteractionLogResponse,
+  AiInteractionReviewRequest,
+  AiRecommendationRequest,
+  AiRecommendationResponse,
+  AiRecommendationSettingsResponse,
   AuthResponse,
   CartResponse,
   CheckoutFailureReportRequest,
@@ -14,6 +22,15 @@ import type {
   OrderSummaryResponse,
   PrepareCheckoutRequest,
   PrepareCheckoutResponse,
+  ProductDiscoveryClickLogFilters,
+  ProductDiscoveryClickLogResponse,
+  ProductDiscoveryClickRequest,
+  ProductDiscoveryClickResponse,
+  ProductDiscoveryFunnelSummaryResponse,
+  ProductDiscoveryImpressionBatchRequest,
+  ProductDiscoveryImpressionLogFilters,
+  ProductDiscoveryImpressionLogResponse,
+  ProductDiscoveryImpressionResponse,
   ProductResponse,
   ProductSearchPageResponse,
   RegisterRequest,
@@ -116,6 +133,122 @@ export function searchProducts(keyword: string) {
     size: "12"
   });
   return apiFetch<ProductSearchPageResponse>(`/api/products/search?${query.toString()}`);
+}
+
+export function askShoppingAi(payload: AiChatRequest) {
+  return apiFetch<AiChatResponse>("/api/ai/chat", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export function getAiRecommendations(payload: AiRecommendationRequest) {
+  return apiFetch<AiRecommendationResponse>("/api/ai/recommendations", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export function recordProductDiscoveryClick(payload: ProductDiscoveryClickRequest) {
+  return apiFetch<ProductDiscoveryClickResponse>("/api/analytics/product-clicks", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export function recordProductDiscoveryImpressions(payload: ProductDiscoveryImpressionBatchRequest) {
+  return apiFetch<ProductDiscoveryImpressionResponse>("/api/analytics/product-impressions", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export function getAiInteractionLogs(limit = 50, filters: AiInteractionLogFilters = {}) {
+  const query = new URLSearchParams({ limit: String(limit) });
+  if (filters.recommendationSource) {
+    query.set("recommendationSource", filters.recommendationSource);
+  }
+  if (filters.recommendationBucket) {
+    query.set("recommendationBucket", filters.recommendationBucket);
+  }
+  if (filters.llmUsed !== undefined) {
+    query.set("llmUsed", String(filters.llmUsed));
+  }
+  if (filters.reviewStatus) {
+    query.set("reviewStatus", filters.reviewStatus);
+  }
+  return apiFetch<AiInteractionLogResponse[]>(`/api/admin/ai/interactions?${query.toString()}`);
+}
+
+export function reviewAiInteraction(interactionId: number, payload: AiInteractionReviewRequest) {
+  return apiFetch<AiInteractionLogResponse>(`/api/admin/ai/interactions/${interactionId}/review`, {
+    method: "PATCH",
+    body: JSON.stringify(payload)
+  });
+}
+
+export function getAiRecommendationSettings() {
+  return apiFetch<AiRecommendationSettingsResponse>("/api/admin/ai/recommendation-settings");
+}
+
+export function getProductDiscoveryClickLogs(limit = 100, filters: ProductDiscoveryClickLogFilters = {}) {
+  const query = new URLSearchParams({ limit: String(limit) });
+  if (filters.surface) {
+    query.set("surface", filters.surface);
+  }
+  if (filters.recommendationSource) {
+    query.set("recommendationSource", filters.recommendationSource);
+  }
+  if (filters.recommendationBucket) {
+    query.set("recommendationBucket", filters.recommendationBucket);
+  }
+  if (filters.from) {
+    query.set("from", filters.from);
+  }
+  if (filters.to) {
+    query.set("to", filters.to);
+  }
+  return apiFetch<ProductDiscoveryClickLogResponse[]>(`/api/admin/ai/product-clicks?${query.toString()}`);
+}
+
+export function getProductDiscoveryFunnelSummary(filters: ProductDiscoveryClickLogFilters = {}) {
+  const query = new URLSearchParams();
+  if (filters.surface) {
+    query.set("surface", filters.surface);
+  }
+  if (filters.recommendationSource) {
+    query.set("recommendationSource", filters.recommendationSource);
+  }
+  if (filters.recommendationBucket) {
+    query.set("recommendationBucket", filters.recommendationBucket);
+  }
+  if (filters.from) {
+    query.set("from", filters.from);
+  }
+  if (filters.to) {
+    query.set("to", filters.to);
+  }
+  return apiFetch<ProductDiscoveryFunnelSummaryResponse>(`/api/admin/ai/discovery-funnel?${query.toString()}`);
+}
+
+export function getProductDiscoveryImpressionLogs(limit = 100, filters: ProductDiscoveryImpressionLogFilters = {}) {
+  const query = new URLSearchParams({ limit: String(limit) });
+  if (filters.surface) {
+    query.set("surface", filters.surface);
+  }
+  if (filters.recommendationSource) {
+    query.set("recommendationSource", filters.recommendationSource);
+  }
+  if (filters.recommendationBucket) {
+    query.set("recommendationBucket", filters.recommendationBucket);
+  }
+  if (filters.from) {
+    query.set("from", filters.from);
+  }
+  if (filters.to) {
+    query.set("to", filters.to);
+  }
+  return apiFetch<ProductDiscoveryImpressionLogResponse[]>(`/api/admin/ai/product-impressions?${query.toString()}`);
 }
 
 export function getCoupons() {
