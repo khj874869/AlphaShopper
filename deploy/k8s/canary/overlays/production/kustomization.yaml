@@ -1,0 +1,33 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: alphashopper-production
+
+resources:
+  - ../../base
+
+images:
+  - name: ghcr.io/your-org/zigzag-shop-backend
+    newName: ghcr.io/your-org/zigzag-shop-backend
+    newTag: canary
+  - name: ghcr.io/your-org/alphashopper-web
+    newName: ghcr.io/your-org/alphashopper-web
+    newTag: canary
+
+patches:
+  - path: patch-backend-deployment.yaml
+    target:
+      kind: Deployment
+      name: zigzag-backend-canary
+  - path: patch-frontend-deployment.yaml
+    target:
+      kind: Deployment
+      name: alphashopper-web-canary
+  - path: patch-backend-ingress.yaml
+    target:
+      kind: Ingress
+      name: zigzag-backend-canary
+  - path: patch-frontend-ingress.yaml
+    target:
+      kind: Ingress
+      name: alphashopper-web-canary

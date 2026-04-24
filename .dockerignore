@@ -1,0 +1,13 @@
+.git
+.github
+target
+frontend/node_modules
+frontend/.next
+frontend/out
+backend.run.err.log
+backend.run.out.log
+frontend.run.err.log
+frontend.run.out.log
+.env.toss.local
+frontend/.env.local
+frontend/.env.toss.local

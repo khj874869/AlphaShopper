@@ -1,0 +1,65 @@
+{
+  "title": "AlphaShopper Canary",
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "15s",
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "Stable vs Canary RPS",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "targets": [
+        {
+          "expr": "sum(rate(http_server_requests_seconds_count{service=\"zigzag-backend\",uri!~\"/actuator.*\"}[5m]))",
+          "legendFormat": "stable"
+        },
+        {
+          "expr": "sum(rate(http_server_requests_seconds_count{service=\"zigzag-backend-canary\",uri!~\"/actuator.*\"}[5m]))",
+          "legendFormat": "canary"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Stable vs Canary 5xx Ratio",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "targets": [
+        {
+          "expr": "sum(rate(http_server_requests_seconds_count{service=\"zigzag-backend\",status=~\"5..\",uri!~\"/actuator.*\"}[5m])) / clamp_min(sum(rate(http_server_requests_seconds_count{service=\"zigzag-backend\",uri!~\"/actuator.*\"}[5m])), 0.001)",
+          "legendFormat": "stable"
+        },
+        {
+          "expr": "sum(rate(http_server_requests_seconds_count{service=\"zigzag-backend-canary\",status=~\"5..\",uri!~\"/actuator.*\"}[5m])) / clamp_min(sum(rate(http_server_requests_seconds_count{service=\"zigzag-backend-canary\",uri!~\"/actuator.*\"}[5m])), 0.001)",
+          "legendFormat": "canary"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Stable vs Canary P95 Latency",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(http_server_requests_seconds_bucket{service=\"zigzag-backend\",uri!~\"/actuator.*\"}[5m])))",
+          "legendFormat": "stable"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(http_server_requests_seconds_bucket{service=\"zigzag-backend-canary\",uri!~\"/actuator.*\"}[5m])))",
+          "legendFormat": "canary"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Canary Stop Signal",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "targets": [
+        {
+          "expr": "(sum(rate(http_server_requests_seconds_count{service=\"zigzag-backend-canary\",status=~\"5..\",uri!~\"/actuator.*\"}[5m])) / clamp_min(sum(rate(http_server_requests_seconds_count{service=\"zigzag-backend-canary\",uri!~\"/actuator.*\"}[5m])), 0.001)) - (sum(rate(http_server_requests_seconds_count{service=\"zigzag-backend\",status=~\"5..\",uri!~\"/actuator.*\"}[5m])) / clamp_min(sum(rate(http_server_requests_seconds_count{service=\"zigzag-backend\",uri!~\"/actuator.*\"}[5m])), 0.001))",
+          "legendFormat": "5xx delta"
+        }
+      ]
+    }
+  ]
+}

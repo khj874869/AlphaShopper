@@ -1,0 +1,54 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: alphashopper-production
+
+resources:
+  - ../../base
+  - ../../secrets/overlays/production
+
+images:
+  - name: ghcr.io/your-org/zigzag-shop-backend
+    newName: ghcr.io/your-org/zigzag-shop-backend
+    newTag: production
+  - name: ghcr.io/your-org/alphashopper-web
+    newName: ghcr.io/your-org/alphashopper-web
+    newTag: production
+
+patches:
+  - path: patch-namespace.yaml
+    target:
+      kind: Namespace
+      name: alphashopper
+  - path: patch-backend-deployment.yaml
+    target:
+      kind: Deployment
+      name: zigzag-backend
+  - path: patch-backend-hpa.yaml
+    target:
+      kind: HorizontalPodAutoscaler
+      name: zigzag-backend
+  - path: patch-backend-pdb.yaml
+    target:
+      kind: PodDisruptionBudget
+      name: zigzag-backend-pdb
+  - path: patch-frontend-deployment.yaml
+    target:
+      kind: Deployment
+      name: alphashopper-web
+  - path: patch-frontend-hpa.yaml
+    target:
+      kind: HorizontalPodAutoscaler
+      name: alphashopper-web
+  - path: patch-frontend-pdb.yaml
+    target:
+      kind: PodDisruptionBudget
+      name: alphashopper-web-pdb
+  - path: patch-ingress.yaml
+    target:
+      kind: Ingress
+      name: alphashopper
+  - path: patch-delete-placeholder-secret.yaml
+    target:
+      kind: Secret
+      name: zigzag-backend-secrets

@@ -1,0 +1,16 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: zigzag-backend-canary
+spec:
+  rules:
+    - host: staging-api.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: zigzag-backend-canary
+                port:
+                  number: 8080

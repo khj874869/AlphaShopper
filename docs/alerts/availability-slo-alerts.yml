@@ -1,0 +1,49 @@
+groups:
+  - name: alphashopper-availability-slo
+    rules:
+      - alert: AlphaShopperAvailabilityErrorBudgetBurnFast
+        expr: |
+          alphashopper:backend_availability_error_ratio_5m > 0.0144
+          and
+          alphashopper:backend_availability_error_ratio_1h > 0.0144
+        for: 2m
+        labels:
+          severity: critical
+          service: zigzag-backend
+          slo: availability
+        annotations:
+          summary: "Availability error budget burn is critical"
+          description: "Stable backend is burning the 99.9% availability error budget too fast on both short and medium windows."
+          runbook_url: "docs/alerts/availability-slo-runbook.md"
+
+      - alert: AlphaShopperAvailabilityErrorBudgetBurnSlow
+        expr: |
+          alphashopper:backend_availability_error_ratio_6h > 0.006
+          and
+          alphashopper:backend_availability_error_ratio_1d > 0.006
+        for: 15m
+        labels:
+          severity: warning
+          service: zigzag-backend
+          slo: availability
+        annotations:
+          summary: "Availability error budget burn is elevated"
+          description: "Stable backend is burning the 99.9% availability error budget faster than planned over long windows."
+          runbook_url: "docs/alerts/availability-slo-runbook.md"
+
+      - alert: AlphaShopperCanaryAvailabilityRegression
+        expr: |
+          alphashopper:backend_canary_error_ratio_5m
+          >
+          (alphashopper:backend_availability_error_ratio_5m + 0.01)
+          and
+          sum(rate(http_server_requests_seconds_count{service="zigzag-backend-canary",uri!~"/actuator.*"}[5m])) > 0.2
+        for: 5m
+        labels:
+          severity: critical
+          service: zigzag-backend-canary
+          slo: availability
+        annotations:
+          summary: "Canary availability regressed against stable"
+          description: "Canary 5xx ratio is at least 1 percentage point worse than stable while it is serving traffic."
+          runbook_url: "docs/canary-observability-runbook.md"

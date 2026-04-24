@@ -77,3 +77,62 @@ jobs:
 
       - name: Validate Docker Compose config
         run: docker compose config
+
+  k8s:
+    name: Kustomize overlays
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: v1.31.0
+
+      - name: Validate staging overlay
+        run: kubectl kustomize deploy/k8s/overlays/staging > /dev/null
+
+      - name: Validate production overlay
+        run: kubectl kustomize deploy/k8s/overlays/production > /dev/null
+
+      - name: Validate staging canary overlay
+        run: kubectl kustomize deploy/k8s/canary/overlays/staging > /dev/null
+
+      - name: Validate production canary overlay
+        run: kubectl kustomize deploy/k8s/canary/overlays/production > /dev/null
+
+      - name: Validate staging monitoring overlay
+        run: kubectl kustomize deploy/k8s/monitoring/overlays/staging > /dev/null
+
+      - name: Validate production monitoring overlay
+        run: kubectl kustomize deploy/k8s/monitoring/overlays/production > /dev/null
+
+      - name: Validate availability SLO alert rules
+        run: rg -n "AlphaShopperAvailabilityErrorBudgetBurnFast|AlphaShopperAvailabilityErrorBudgetBurnSlow|AlphaShopperCanaryAvailabilityRegression" docs/alerts/availability-slo-alerts.yml deploy/k8s/monitoring/base/prometheus-rule.yaml
+
+      - name: Validate staging ingress monitoring overlay
+        run: kubectl kustomize deploy/k8s/monitoring/ingress/overlays/staging > /dev/null
+
+      - name: Validate production ingress monitoring overlay
+        run: kubectl kustomize deploy/k8s/monitoring/ingress/overlays/production > /dev/null
+
+      - name: Validate staging secrets overlay
+        run: kubectl kustomize deploy/k8s/secrets/overlays/staging > /dev/null
+
+      - name: Validate production secrets overlay
+        run: kubectl kustomize deploy/k8s/secrets/overlays/production > /dev/null
+
+      - name: Validate Argo CD manifests
+        run: rg -n "kind: AppProject|kind: Application|repoURL: https://github.com/khj874869/AlphaShopper.git|targetRevision: main|sync-wave" deploy/argocd
+
+      - name: Validate Argo CD production sync assets
+        run: rg -n "syncWindows|manualSync: true|Production Sync|argocd app sync|ARGOCD_SERVER|ARGOCD_AUTH_TOKEN" deploy/argocd/projects/alphashopper-project.yaml .github/workflows/production-sync.yml scripts/deploy/argocd-sync.sh
+
+      - name: Validate release day runbook assets
+        run: rg -n "Release Day Runbook|Phase 1: Preflight|production-sync.yml|argocd-app-status.sh|Stop Conditions" docs/release-day-runbook.md scripts/deploy/argocd-app-status.sh deploy/k8s/README.md docs/production-release-checklist.md
+
+      - name: Validate Slack notification assets
+        run: rg -n "slack-notify.sh|SLACK_WEBHOOK_URL|Notify Slack|Slack notification" scripts/deploy/slack-notify.sh .github/workflows/deploy.yml .github/workflows/canary.yml .github/workflows/production-sync.yml deploy/k8s/README.md docs/production-release-checklist.md

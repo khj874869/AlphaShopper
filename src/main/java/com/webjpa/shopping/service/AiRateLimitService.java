@@ -1,6 +1,7 @@
 package com.webjpa.shopping.service;
 
 import com.webjpa.shopping.common.ApiException;
+import com.webjpa.shopping.security.ClientAddressResolver;
 import com.webjpa.shopping.security.AuthenticatedMember;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
@@ -20,6 +21,7 @@ public class AiRateLimitService {
     private static final Logger log = LoggerFactory.getLogger(AiRateLimitService.class);
     private static final int MAX_IN_MEMORY_KEYS = 10_000;
 
+    private final ClientAddressResolver clientAddressResolver;
     private final ObjectProvider<StringRedisTemplate> redisTemplateProvider;
     private final boolean redisEnabled;
     private final boolean enabled;
@@ -28,12 +30,14 @@ public class AiRateLimitService {
     private final String keyPrefix;
     private final ConcurrentHashMap<String, InMemoryBucket> inMemoryBuckets = new ConcurrentHashMap<>();
 
-    public AiRateLimitService(ObjectProvider<StringRedisTemplate> redisTemplateProvider,
+    public AiRateLimitService(ClientAddressResolver clientAddressResolver,
+                              ObjectProvider<StringRedisTemplate> redisTemplateProvider,
                               @Value("${app.redis.enabled:false}") boolean redisEnabled,
                               @Value("${app.ai.rate-limit.enabled:true}") boolean enabled,
                               @Value("${app.ai.rate-limit.window-seconds:60}") int windowSeconds,
                               @Value("${app.ai.rate-limit.max-requests:30}") int maxRequests,
                               @Value("${app.redis.key-prefix:alphashopper}") String keyPrefix) {
+        this.clientAddressResolver = clientAddressResolver;
         this.redisTemplateProvider = redisTemplateProvider;
         this.redisEnabled = redisEnabled;
         this.enabled = enabled;
@@ -48,7 +52,7 @@ public class AiRateLimitService {
         }
 
         String subject = authenticatedMember == null
-                ? "ip:" + clientIp(request)
+                ? "ip:" + clientAddressResolver.resolveClientIp(request)
                 : "member:" + authenticatedMember.memberId();
         String key = keyPrefix + ":ai:rate-limit:" + operation + ":" + subject;
 
@@ -104,18 +108,6 @@ public class AiRateLimitService {
 
     private ApiException rateLimitExceeded() {
         return new ApiException(HttpStatus.TOO_MANY_REQUESTS, "Too many AI requests. Please retry later.");
-    }
-
-    private String clientIp(HttpServletRequest request) {
-        if (request == null) {
-            return "unknown";
-        }
-        String forwardedFor = request.getHeader("X-Forwarded-For");
-        if (forwardedFor != null && !forwardedFor.isBlank()) {
-            return forwardedFor.split(",", 2)[0].trim();
-        }
-        String remoteAddr = request.getRemoteAddr();
-        return remoteAddr == null || remoteAddr.isBlank() ? "unknown" : remoteAddr;
     }
 
     private static String normalizePrefix(String keyPrefix) {

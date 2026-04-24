@@ -1,0 +1,6 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: alphashopper-web-pdb
+spec:
+  minAvailable: 3

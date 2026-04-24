@@ -1,0 +1,68 @@
+name: Production Sync
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Argo CD application target
+        required: true
+        type: choice
+        options:
+          - all
+          - root
+          - core
+          - monitoring
+          - ingress-monitoring
+
+concurrency:
+  group: production-sync
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  sync:
+    name: Sync production through Argo CD
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: production
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Argo CD CLI
+        shell: bash
+        run: |
+          curl -sSL -o /usr/local/bin/argocd https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
+          chmod +x /usr/local/bin/argocd
+          argocd version --client
+
+      - name: Sync production applications
+        env:
+          ARGOCD_SERVER: ${{ secrets.ARGOCD_SERVER }}
+          ARGOCD_AUTH_TOKEN: ${{ secrets.ARGOCD_AUTH_TOKEN }}
+          ARGOCD_GRPC_WEB: ${{ vars.ARGOCD_GRPC_WEB || 'true' }}
+          ARGOCD_INSECURE: ${{ vars.ARGOCD_INSECURE || 'false' }}
+          ARGOCD_SYNC_TIMEOUT_SECONDS: ${{ vars.ARGOCD_SYNC_TIMEOUT_SECONDS || '900' }}
+        run: bash scripts/deploy/argocd-sync.sh production "${{ inputs.target }}"
+
+      - name: Summary
+        run: |
+          echo "Production Argo CD sync completed." >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "- target: \`${{ inputs.target }}\`" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Notify Slack
+        if: always() && secrets.SLACK_WEBHOOK_URL != ''
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_TITLE: Production sync workflow
+          SLACK_STATUS: ${{ job.status == 'success' && 'success' || 'failed' }}
+          SLACK_DETAILS: |
+            target=${{ inputs.target }}
+            actor=${{ github.actor }}
+            environment=production
+          SLACK_LINK: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: bash scripts/deploy/slack-notify.sh

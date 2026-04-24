@@ -1,0 +1,13 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ingress-nginx-servicemonitor.yaml
+  - ingress-prometheus-rule.yaml
+
+labels:
+  - includeSelectors: false
+    pairs:
+      app.kubernetes.io/part-of: alphashopper
+      app.kubernetes.io/managed-by: kustomize
+      app.kubernetes.io/component: ingress-monitoring

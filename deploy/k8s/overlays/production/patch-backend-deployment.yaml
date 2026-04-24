@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: zigzag-backend
+spec:
+  replicas: 4
+  minReadySeconds: 20
+  template:
+    spec:
+      containers:
+        - name: backend
+          imagePullPolicy: Always
+          resources:
+            requests:
+              cpu: 750m
+              memory: 1536Mi
+            limits:
+              cpu: "3"
+              memory: 3Gi

@@ -1,0 +1,31 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: alphashopper
+spec:
+  tls:
+    - hosts:
+        - staging-shop.example.com
+        - staging-api.example.com
+      secretName: alphashopper-staging-tls
+  rules:
+    - host: staging-shop.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: alphashopper-web
+                port:
+                  number: 3000
+    - host: staging-api.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: zigzag-backend
+                port:
+                  number: 8080

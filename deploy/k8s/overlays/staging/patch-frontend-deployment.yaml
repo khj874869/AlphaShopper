@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: alphashopper-web
+spec:
+  replicas: 2
+  minReadySeconds: 5
+  template:
+    spec:
+      containers:
+        - name: web
+          imagePullPolicy: Always
+          resources:
+            requests:
+              cpu: 150m
+              memory: 192Mi
+            limits:
+              cpu: 700m
+              memory: 384Mi

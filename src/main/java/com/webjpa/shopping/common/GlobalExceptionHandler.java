@@ -19,7 +19,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleApiException(ApiException ex, HttpServletRequest request) {
         return ResponseEntity.status(ex.getStatus())
                 .body(new ErrorResponse(
-                        LocalDateTime.now(),
+                        LocalDateTime.now().toString(),
                         ex.getStatus().value(),
                         ex.getStatus().getReasonPhrase(),
                         ex.getMessage(),
@@ -36,7 +36,7 @@ public class GlobalExceptionHandler {
 
         return ResponseEntity.badRequest()
                 .body(new ErrorResponse(
-                        LocalDateTime.now(),
+                        LocalDateTime.now().toString(),
                         HttpStatus.BAD_REQUEST.value(),
                         HttpStatus.BAD_REQUEST.getReasonPhrase(),
                         message,
@@ -49,7 +49,7 @@ public class GlobalExceptionHandler {
                                                                             HttpServletRequest request) {
         return ResponseEntity.badRequest()
                 .body(new ErrorResponse(
-                        LocalDateTime.now(),
+                        LocalDateTime.now().toString(),
                         HttpStatus.BAD_REQUEST.value(),
                         HttpStatus.BAD_REQUEST.getReasonPhrase(),
                         ex.getMessage(),
@@ -61,7 +61,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleUnexpectedException(Exception ex, HttpServletRequest request) {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(new ErrorResponse(
-                        LocalDateTime.now(),
+                        LocalDateTime.now().toString(),
                         HttpStatus.INTERNAL_SERVER_ERROR.value(),
                         HttpStatus.INTERNAL_SERVER_ERROR.getReasonPhrase(),
                         ex.getMessage(),
@@ -69,4 +69,3 @@ public class GlobalExceptionHandler {
                 ));
     }
 }
-

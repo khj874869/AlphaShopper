@@ -158,7 +158,7 @@ This mode changes:
 
 1. Copy [.env.production.example](/abs/path/C:/Users/S-P-041/Downloads/webjpa/.env.production.example) to your deployment secret store or hosting platform env configuration.
 2. Set `SPRING_PROFILES_ACTIVE=prod`.
-3. Set Toss Payments credentials, storefront URL, and secure auth cookie settings using `APP_PAYMENT_TOSS_SECRET_KEY`, `APP_FRONTEND_BASE_URL`, and `APP_AUTH_COOKIE_SECURE=true`.
+3. Set Toss Payments credentials, storefront URL, secure auth cookie settings, webhook IP allowlists, and Prometheus scrape IP allowlists using `APP_PAYMENT_TOSS_SECRET_KEY`, `APP_FRONTEND_BASE_URL`, `APP_AUTH_COOKIE_SECURE=true`, `APP_PAYMENT_TOSS_WEBHOOK_ALLOWED_IP_RANGES`, and `APP_MANAGEMENT_PROMETHEUS_ALLOWED_IP_RANGES`.
 4. Copy [frontend/.env.production.example](/abs/path/C:/Users/S-P-041/Downloads/webjpa/frontend/.env.production.example) into your front-end deployment environment.
 5. Build backend with `./mvnw clean package` and frontend with `cd frontend && npm run build`.
 6. Complete the production release checklist in [docs/production-release-checklist.md](/abs/path/C:/Users/S-P-041/Downloads/webjpa/docs/production-release-checklist.md).
@@ -172,6 +172,10 @@ Production guards:
 - startup fails if `prod` points at in-memory H2
 - startup fails if `prod` still tries to use the fake payment provider
 - startup fails if Toss provider is enabled without a secret key
+- startup fails if `prod` leaves AI endpoints open to anonymous callers
+- startup fails if `prod` leaves Prometheus publicly accessible
+- startup fails if `prod` does not configure Prometheus scrape IP allowlists
+- startup fails if `prod` does not configure Toss webhook source IP allowlists
 - startup fails if `prod` disables Flyway migrations
 - startup fails if `prod` allows Flyway `clean`
 - startup fails if `prod` disables Flyway validation before migration
@@ -199,7 +203,7 @@ Production guards:
 - backend info is exposed at `/actuator/info`
 - Prometheus metrics are exposed at `/actuator/prometheus`
 - production can override exposed actuator endpoints with `MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE`
-- Prometheus scraping should be restricted by the deployment network or ingress rules
+- production Prometheus scraping is gated by `APP_MANAGEMENT_PROMETHEUS_ALLOWED_IP_RANGES`
 - operational logs use parseable `event=... key=value` fields for checkout, payment reconciliation, Kafka notification, email, and search indexing flows
 - payment keys, tracking numbers, and recipient emails are masked before being written to application logs
 - HTTP responses include `X-Request-Id`; incoming valid values are reused, otherwise the backend generates one
@@ -230,6 +234,8 @@ The web app includes:
 ## Internal LLM shopping AI
 
 The backend exposes two AI endpoints:
+
+In `prod`, anonymous AI access is disabled by default with `APP_AI_ALLOW_ANONYMOUS=false`.
 
 ```http
 POST /api/ai/chat

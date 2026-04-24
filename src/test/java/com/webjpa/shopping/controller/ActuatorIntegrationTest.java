@@ -17,7 +17,11 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@SpringBootTest(properties = "management.endpoints.web.exposure.include=health,info,prometheus")
+@SpringBootTest(properties = {
+        "management.endpoints.web.exposure.include=health,info,prometheus",
+        "app.management.prometheus.public-access=false",
+        "app.management.prometheus.allowed-ip-ranges=127.0.0.1/32"
+})
 @AutoConfigureMockMvc
 class ActuatorIntegrationTest {
 
@@ -37,9 +41,34 @@ class ActuatorIntegrationTest {
     private KafkaTemplate<String, OrderNotificationMessage> kafkaTemplate;
 
     @Test
-    void prometheusEndpoint_isExposedWithoutAuthentication() throws Exception {
-        mockMvc.perform(get("/actuator/prometheus"))
+    void prometheusEndpoint_allowsAllowlistedIp() throws Exception {
+        mockMvc.perform(get("/actuator/prometheus")
+                        .with(request -> {
+                            request.setRemoteAddr("127.0.0.1");
+                            return request;
+                        }))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("jvm_info")));
+    }
+
+    @Test
+    void prometheusEndpoint_rejectsNonAllowlistedIp() throws Exception {
+        mockMvc.perform(get("/actuator/prometheus")
+                        .with(request -> {
+                            request.setRemoteAddr("203.0.113.10");
+                            return request;
+                        }))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void healthProbeEndpoints_areExposedForOrchestrators() throws Exception {
+        mockMvc.perform(get("/actuator/health/liveness"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("\"status\":\"UP\"")));
+
+        mockMvc.perform(get("/actuator/health/readiness"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("\"status\":\"UP\"")));
     }
 }

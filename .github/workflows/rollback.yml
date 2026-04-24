@@ -1,0 +1,76 @@
+name: Rollback
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Target environment
+        required: true
+        type: choice
+        options:
+          - staging
+          - production
+      target:
+        description: Deployment target
+        required: true
+        type: choice
+        options:
+          - all
+          - backend
+          - frontend
+      revision:
+        description: Optional deployment revision number
+        required: false
+        type: string
+
+concurrency:
+  group: rollback-${{ inputs.environment }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  rollback:
+    name: Roll back deployment
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: ${{ inputs.environment }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: v1.31.0
+
+      - name: Configure kubeconfig
+        shell: bash
+        run: |
+          mkdir -p "$HOME/.kube"
+          echo "${{ secrets.KUBE_CONFIG }}" | base64 --decode > "$HOME/.kube/config"
+          chmod 600 "$HOME/.kube/config"
+
+      - name: Show rollout history before rollback
+        run: |
+          kubectl rollout history deployment/zigzag-backend -n ${{ vars.K8S_NAMESPACE }}
+          kubectl rollout history deployment/alphashopper-web -n ${{ vars.K8S_NAMESPACE }}
+
+      - name: Roll back target
+        env:
+          K8S_NAMESPACE: ${{ vars.K8S_NAMESPACE }}
+        shell: bash
+        run: |
+          revision="${{ inputs.revision }}"
+          if [[ -n "$revision" ]]; then
+            bash scripts/deploy/rollback.sh "${{ inputs.target }}" "$revision"
+          else
+            bash scripts/deploy/rollback.sh "${{ inputs.target }}"
+          fi
+
+      - name: Show rollout history after rollback
+        run: |
+          kubectl rollout history deployment/zigzag-backend -n ${{ vars.K8S_NAMESPACE }}
+          kubectl rollout history deployment/alphashopper-web -n ${{ vars.K8S_NAMESPACE }}

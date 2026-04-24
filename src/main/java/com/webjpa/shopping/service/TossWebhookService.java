@@ -55,6 +55,24 @@ public class TossWebhookService {
             return;
         }
 
+        if (payloadStatus.isBlank()) {
+            log.warn("event=toss.webhook.ignored reason=missing_payload_status providerOrderId={} paymentKey={}",
+                    LogValues.safe(payment.providerOrderId()), LogValues.maskToken(paymentKey));
+            return;
+        }
+
+        if (!normalizeStatus(payloadStatus).equals(normalizeStatus(payment.status()))) {
+            log.warn("event=toss.webhook.ignored reason=status_mismatch payloadStatus={} lookupStatus={} providerOrderId={} paymentKey={}",
+                    LogValues.safe(payloadStatus), LogValues.safe(payment.status()), LogValues.safe(payment.providerOrderId()), LogValues.maskToken(paymentKey));
+            return;
+        }
+
+        if (hasAmountMismatch(data, payment.amount())) {
+            log.warn("event=toss.webhook.ignored reason=amount_mismatch payloadAmount={} lookupAmount={} providerOrderId={} paymentKey={}",
+                    LogValues.safe(data.get("totalAmount")), LogValues.safe(payment.amount()), LogValues.safe(payment.providerOrderId()), LogValues.maskToken(paymentKey));
+            return;
+        }
+
         String normalizedStatus = normalizeStatus(payment.status());
         log.info("event=toss.webhook.verified eventType={} providerOrderId={} paymentKey={} paymentStatus={} action={}",
                 LogValues.safe(eventType),
@@ -86,6 +104,24 @@ public class TossWebhookService {
 
     private String normalizeStatus(String status) {
         return status == null ? "" : status.toUpperCase();
+    }
+
+    private boolean hasAmountMismatch(Map<String, Object> payload, java.math.BigDecimal lookupAmount) {
+        if (lookupAmount == null || !payload.containsKey("totalAmount")) {
+            return false;
+        }
+
+        Object payloadAmount = payload.get("totalAmount");
+        if (payloadAmount == null) {
+            return false;
+        }
+
+        try {
+            java.math.BigDecimal normalizedPayloadAmount = new java.math.BigDecimal(String.valueOf(payloadAmount).trim());
+            return normalizedPayloadAmount.compareTo(lookupAmount) != 0;
+        } catch (NumberFormatException ex) {
+            return true;
+        }
     }
 
     private String webhookAction(String normalizedStatus) {

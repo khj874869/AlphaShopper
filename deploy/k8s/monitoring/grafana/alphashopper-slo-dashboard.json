@@ -1,0 +1,95 @@
+{
+  "title": "AlphaShopper SLO",
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Availability SLI 5m",
+      "gridPos": { "h": 6, "w": 6, "x": 0, "y": 0 },
+      "targets": [
+        {
+          "expr": "1 - alphashopper:backend_availability_error_ratio_5m",
+          "legendFormat": "availability"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Error Budget Burn 5m",
+      "gridPos": { "h": 6, "w": 6, "x": 6, "y": 0 },
+      "targets": [
+        {
+          "expr": "alphashopper:backend_availability_error_ratio_5m / 0.001",
+          "legendFormat": "burn rate"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Error Budget Burn 1h",
+      "gridPos": { "h": 6, "w": 6, "x": 12, "y": 0 },
+      "targets": [
+        {
+          "expr": "alphashopper:backend_availability_error_ratio_1h / 0.001",
+          "legendFormat": "burn rate"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Canary Error Ratio 5m",
+      "gridPos": { "h": 6, "w": 6, "x": 18, "y": 0 },
+      "targets": [
+        {
+          "expr": "alphashopper:backend_canary_error_ratio_5m",
+          "legendFormat": "canary"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Availability Error Ratio",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 6 },
+      "targets": [
+        {
+          "expr": "alphashopper:backend_availability_error_ratio_5m",
+          "legendFormat": "stable 5m"
+        },
+        {
+          "expr": "alphashopper:backend_availability_error_ratio_1h",
+          "legendFormat": "stable 1h"
+        },
+        {
+          "expr": "alphashopper:backend_canary_error_ratio_5m",
+          "legendFormat": "canary 5m"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Availability Error Budget Burn Rate",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 6 },
+      "targets": [
+        {
+          "expr": "alphashopper:backend_availability_error_ratio_5m / 0.001",
+          "legendFormat": "5m burn"
+        },
+        {
+          "expr": "alphashopper:backend_availability_error_ratio_1h / 0.001",
+          "legendFormat": "1h burn"
+        },
+        {
+          "expr": "alphashopper:backend_availability_error_ratio_6h / 0.001",
+          "legendFormat": "6h burn"
+        },
+        {
+          "expr": "alphashopper:backend_availability_error_ratio_1d / 0.001",
+          "legendFormat": "1d burn"
+        }
+      ]
+    }
+  ]
+}

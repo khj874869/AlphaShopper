@@ -1,0 +1,83 @@
+{
+  "title": "AlphaShopper Frontend Edge",
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "15s",
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Frontend Edge RPS",
+      "gridPos": { "h": 6, "w": 6, "x": 0, "y": 0 },
+      "targets": [
+        {
+          "expr": "sum(rate(nginx_ingress_controller_requests{service=\"alphashopper-web\"}[5m]))",
+          "legendFormat": "stable"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Frontend Edge 5xx Ratio",
+      "gridPos": { "h": 6, "w": 6, "x": 6, "y": 0 },
+      "targets": [
+        {
+          "expr": "sum(rate(nginx_ingress_controller_requests{service=\"alphashopper-web\",status=~\"5..\"}[5m])) / clamp_min(sum(rate(nginx_ingress_controller_requests{service=\"alphashopper-web\"}[5m])), 0.001)",
+          "legendFormat": "stable"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Frontend Edge P95",
+      "gridPos": { "h": 6, "w": 6, "x": 12, "y": 0 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(nginx_ingress_controller_request_duration_seconds_bucket{service=\"alphashopper-web\"}[5m])))",
+          "legendFormat": "stable"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Frontend Canary 5xx Ratio",
+      "gridPos": { "h": 6, "w": 6, "x": 18, "y": 0 },
+      "targets": [
+        {
+          "expr": "sum(rate(nginx_ingress_controller_requests{service=\"alphashopper-web-canary\",status=~\"5..\"}[5m])) / clamp_min(sum(rate(nginx_ingress_controller_requests{service=\"alphashopper-web-canary\"}[5m])), 0.001)",
+          "legendFormat": "canary"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Stable vs Canary Edge Requests",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 6 },
+      "targets": [
+        {
+          "expr": "sum(rate(nginx_ingress_controller_requests{service=\"alphashopper-web\"}[5m]))",
+          "legendFormat": "stable"
+        },
+        {
+          "expr": "sum(rate(nginx_ingress_controller_requests{service=\"alphashopper-web-canary\"}[5m]))",
+          "legendFormat": "canary"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Stable vs Canary Edge Latency",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 6 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(nginx_ingress_controller_request_duration_seconds_bucket{service=\"alphashopper-web\"}[5m])))",
+          "legendFormat": "stable"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(nginx_ingress_controller_request_duration_seconds_bucket{service=\"alphashopper-web-canary\"}[5m])))",
+          "legendFormat": "canary"
+        }
+      ]
+    }
+  ]
+}

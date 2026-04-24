@@ -1,0 +1,17 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: alphashopper-production
+
+resources:
+  - ../../base
+
+patches:
+  - path: patch-servicemonitor.yaml
+    target:
+      kind: ServiceMonitor
+      name: ingress-nginx-controller
+  - path: patch-prometheus-rule.yaml
+    target:
+      kind: PrometheusRule
+      name: alphashopper-ingress

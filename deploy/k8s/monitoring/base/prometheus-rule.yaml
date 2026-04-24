@@ -1,0 +1,177 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: alphashopper
+  namespace: alphashopper
+spec:
+  groups:
+    - name: alphashopper-backend
+      rules:
+        - alert: AlphaShopperBackendDown
+          expr: max_over_time(up{service="zigzag-backend"}[5m]) == 0
+          for: 2m
+          labels:
+            severity: critical
+            service: zigzag-backend
+          annotations:
+            summary: AlphaShopper backend is down
+            description: Stable backend metrics have not been scraped for 5 minutes.
+        - alert: AlphaShopperBackendHigh5xxRate
+          expr: |
+            (
+              sum(rate(http_server_requests_seconds_count{service="zigzag-backend",status=~"5..",uri!~"/actuator.*"}[5m]))
+              /
+              clamp_min(sum(rate(http_server_requests_seconds_count{service="zigzag-backend",uri!~"/actuator.*"}[5m])), 0.001)
+            ) > 0.02
+          for: 10m
+          labels:
+            severity: warning
+            service: zigzag-backend
+          annotations:
+            summary: AlphaShopper backend 5xx rate is elevated
+            description: Stable backend 5xx ratio is above 2% for 10 minutes.
+        - alert: AlphaShopperBackendHighP95Latency
+          expr: |
+            histogram_quantile(
+              0.95,
+              sum by (le) (
+                rate(http_server_requests_seconds_bucket{service="zigzag-backend",uri!~"/actuator.*"}[5m])
+              )
+            ) > 1.5
+          for: 10m
+          labels:
+            severity: warning
+            service: zigzag-backend
+          annotations:
+            summary: AlphaShopper backend p95 latency is high
+            description: Stable backend p95 latency is above 1.5 seconds for 10 minutes.
+        - alert: AlphaShopperCanaryHigh5xxRegression
+          expr: |
+            (
+              sum(rate(http_server_requests_seconds_count{service="zigzag-backend-canary",status=~"5..",uri!~"/actuator.*"}[5m]))
+              /
+              clamp_min(sum(rate(http_server_requests_seconds_count{service="zigzag-backend-canary",uri!~"/actuator.*"}[5m])), 0.001)
+            )
+            >
+            (
+              (
+                sum(rate(http_server_requests_seconds_count{service="zigzag-backend",status=~"5..",uri!~"/actuator.*"}[5m]))
+                /
+                clamp_min(sum(rate(http_server_requests_seconds_count{service="zigzag-backend",uri!~"/actuator.*"}[5m])), 0.001)
+              ) + 0.05
+            )
+            and
+            sum(rate(http_server_requests_seconds_count{service="zigzag-backend-canary",uri!~"/actuator.*"}[5m])) > 0.2
+          for: 5m
+          labels:
+            severity: critical
+            service: zigzag-backend-canary
+          annotations:
+            summary: AlphaShopper canary 5xx rate regressed against stable
+            description: Canary 5xx ratio is materially worse than stable while serving traffic.
+        - alert: AlphaShopperCanaryHighP95Regression
+          expr: |
+            histogram_quantile(
+              0.95,
+              sum by (le) (
+                rate(http_server_requests_seconds_bucket{service="zigzag-backend-canary",uri!~"/actuator.*"}[5m])
+              )
+            )
+            >
+            (
+              histogram_quantile(
+                0.95,
+                sum by (le) (
+                  rate(http_server_requests_seconds_bucket{service="zigzag-backend",uri!~"/actuator.*"}[5m])
+                )
+              ) * 1.5
+            )
+            and
+            sum(rate(http_server_requests_seconds_count{service="zigzag-backend-canary",uri!~"/actuator.*"}[5m])) > 0.2
+          for: 5m
+          labels:
+            severity: critical
+            service: zigzag-backend-canary
+          annotations:
+            summary: AlphaShopper canary latency regressed against stable
+            description: Canary p95 latency is more than 1.5x stable while serving traffic.
+        - alert: AlphaShopperKafkaDltReplayFailures
+          expr: sum(increase(alphashopper_kafka_dlt_replay_results_total{result=~"failed|exception"}[15m])) > 0
+          for: 0m
+          labels:
+            severity: warning
+            service: zigzag-backend
+          annotations:
+            summary: AlphaShopper DLT replay failures detected
+            description: DLT replay reported failed or exception results in the last 15 minutes.
+    - name: alphashopper-slo
+      rules:
+        - record: alphashopper:backend_availability_error_ratio_5m
+          expr: |
+            sum(rate(http_server_requests_seconds_count{service="zigzag-backend",status=~"5..",uri!~"/actuator.*"}[5m]))
+            /
+            clamp_min(sum(rate(http_server_requests_seconds_count{service="zigzag-backend",uri!~"/actuator.*"}[5m])), 0.001)
+        - record: alphashopper:backend_availability_error_ratio_1h
+          expr: |
+            sum(rate(http_server_requests_seconds_count{service="zigzag-backend",status=~"5..",uri!~"/actuator.*"}[1h]))
+            /
+            clamp_min(sum(rate(http_server_requests_seconds_count{service="zigzag-backend",uri!~"/actuator.*"}[1h])), 0.001)
+        - record: alphashopper:backend_availability_error_ratio_6h
+          expr: |
+            sum(rate(http_server_requests_seconds_count{service="zigzag-backend",status=~"5..",uri!~"/actuator.*"}[6h]))
+            /
+            clamp_min(sum(rate(http_server_requests_seconds_count{service="zigzag-backend",uri!~"/actuator.*"}[6h])), 0.001)
+        - record: alphashopper:backend_availability_error_ratio_1d
+          expr: |
+            sum(rate(http_server_requests_seconds_count{service="zigzag-backend",status=~"5..",uri!~"/actuator.*"}[1d]))
+            /
+            clamp_min(sum(rate(http_server_requests_seconds_count{service="zigzag-backend",uri!~"/actuator.*"}[1d])), 0.001)
+        - record: alphashopper:backend_canary_error_ratio_5m
+          expr: |
+            sum(rate(http_server_requests_seconds_count{service="zigzag-backend-canary",status=~"5..",uri!~"/actuator.*"}[5m]))
+            /
+            clamp_min(sum(rate(http_server_requests_seconds_count{service="zigzag-backend-canary",uri!~"/actuator.*"}[5m])), 0.001)
+        - alert: AlphaShopperAvailabilityErrorBudgetBurnFast
+          expr: |
+            alphashopper:backend_availability_error_ratio_5m > 0.0144
+            and
+            alphashopper:backend_availability_error_ratio_1h > 0.0144
+          for: 2m
+          labels:
+            severity: critical
+            service: zigzag-backend
+            slo: availability
+          annotations:
+            summary: AlphaShopper availability error budget is burning too fast
+            description: Stable backend is consuming the 99.9% availability error budget at a fast-burn rate.
+            runbook_url: docs/alerts/availability-slo-runbook.md
+        - alert: AlphaShopperAvailabilityErrorBudgetBurnSlow
+          expr: |
+            alphashopper:backend_availability_error_ratio_6h > 0.006
+            and
+            alphashopper:backend_availability_error_ratio_1d > 0.006
+          for: 15m
+          labels:
+            severity: warning
+            service: zigzag-backend
+            slo: availability
+          annotations:
+            summary: AlphaShopper availability error budget is burning above the slow-burn threshold
+            description: Stable backend is consuming the 99.9% availability error budget faster than planned over the long window.
+            runbook_url: docs/alerts/availability-slo-runbook.md
+        - alert: AlphaShopperCanaryAvailabilityRegression
+          expr: |
+            alphashopper:backend_canary_error_ratio_5m
+            >
+            (alphashopper:backend_availability_error_ratio_5m + 0.01)
+            and
+            sum(rate(http_server_requests_seconds_count{service="zigzag-backend-canary",uri!~"/actuator.*"}[5m])) > 0.2
+          for: 5m
+          labels:
+            severity: critical
+            service: zigzag-backend-canary
+            slo: availability
+          annotations:
+            summary: AlphaShopper canary is violating the availability comparison gate
+            description: Canary 5xx ratio is more than 1 percentage point worse than stable while serving traffic.
+            runbook_url: docs/canary-observability-runbook.md

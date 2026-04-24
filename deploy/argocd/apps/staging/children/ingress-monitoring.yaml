@@ -1,0 +1,24 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: alphashopper-staging-ingress-monitoring
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  project: alphashopper
+  source:
+    repoURL: https://github.com/khj874869/AlphaShopper.git
+    targetRevision: main
+    path: deploy/k8s/monitoring/ingress/overlays/staging
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: alphashopper-staging
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+      - ApplyOutOfSyncOnly=true

@@ -2,6 +2,8 @@
 
 Use this checklist before promoting AlphaShopper to a production-like environment.
 
+For the full operator timeline on release day, use `docs/release-day-runbook.md` together with this checklist.
+
 ## 1. Source And CI
 
 - [ ] The release commit is pushed to `main`.
@@ -10,6 +12,11 @@ Use this checklist before promoting AlphaShopper to a production-like environmen
 - [ ] GitHub Actions `Compose config` passed.
 - [ ] Dependabot PRs for this release window were reviewed or intentionally deferred.
 - [ ] No local-only files were committed, including `.env.toss.local`, `.env.local`, logs, or generated build output.
+- [ ] If Argo CD is used, root and child `Application` specs point to the correct `repoURL` and `targetRevision`.
+- [ ] If Argo CD is used, production child applications remain manual-sync unless an explicit auto-sync decision was approved.
+- [ ] If `.github/workflows/deploy.yml` is used, operators understand that it commits desired-state image tags back to git instead of applying production manifests directly.
+- [ ] If `.github/workflows/production-sync.yml` is used, `ARGOCD_SERVER` and `ARGOCD_AUTH_TOKEN` secrets are configured for the production GitHub Environment.
+- [ ] If Slack workflow notifications are desired, `SLACK_WEBHOOK_URL` is configured in the relevant GitHub Environments.
 
 ## 2. Runtime Versions
 
@@ -30,6 +37,13 @@ Use this checklist before promoting AlphaShopper to a production-like environmen
 - [ ] `APP_FRONTEND_BASE_URL` is the public HTTPS storefront URL.
 - [ ] `APP_FRONTEND_ALLOWED_ORIGINS` contains only production HTTPS origins.
 - [ ] `APP_SEED_DEMO_DATA_ENABLED=false`.
+- [ ] `APP_AI_ALLOW_ANONYMOUS=false`.
+- [ ] `APP_MANAGEMENT_PROMETHEUS_PUBLIC_ACCESS=false`.
+- [ ] `APP_MANAGEMENT_PROMETHEUS_ALLOWED_IP_RANGES` contains only approved scraper IP ranges.
+- [ ] `APP_NETWORK_TRUST_FORWARDED_HEADERS` matches the reverse proxy setup.
+- [ ] Placeholder Kubernetes `Secret` manifests are not used in staging or production.
+- [ ] `External Secrets Operator` is installed and healthy in the target cluster.
+- [ ] The correct `ClusterSecretStore` for the environment is present and ready.
 
 ## 4. Database And Migrations
 
@@ -49,6 +63,8 @@ Use this checklist before promoting AlphaShopper to a production-like environmen
 
 - [ ] `APP_PAYMENT_PROVIDER=toss`.
 - [ ] `APP_PAYMENT_TOSS_SECRET_KEY` is present in the backend secret store.
+- [ ] `APP_PAYMENT_TOSS_WEBHOOK_ALLOWED_IP_RANGES` contains the current Toss Payments source IP ranges or the ingress IP range that fronts them.
+- [ ] `APP_PAYMENT_TOSS_WEBHOOK_MAX_SKEW_SECONDS` is reviewed for the target environment.
 - [ ] Frontend production env has `NEXT_PUBLIC_PAYMENT_PROVIDER=toss`.
 - [ ] Toss success redirect points to `/payments/toss/success`.
 - [ ] Toss failure redirect points to `/payments/toss/fail`.
@@ -108,16 +124,27 @@ Use this checklist before promoting AlphaShopper to a production-like environmen
 - [ ] The database backup or recovery point is documented.
 - [ ] Rollback owner and communication channel are assigned.
 - [ ] Rollback criteria are defined before deployment starts.
+- [ ] If Argo CD is used, operators know whether rollback will happen by Git revert or by disabling auto-sync and manually syncing a prior revision.
+- [ ] If Argo CD sync windows are used, operators know that production auto-sync is denied by project policy and only manual sync is expected.
 
 ## 11. Post-Release
 
 - [ ] Error rate and latency are monitored for backend APIs.
 - [ ] Prometheus scraping for `/actuator/prometheus` is healthy.
+- [ ] Prometheus Operator resources from `deploy/k8s/monitoring/overlays/<env>` are applied and healthy.
+- [ ] Grafana overview and canary dashboards are imported or provisioned from `deploy/k8s/monitoring/grafana`.
+- [ ] Frontend edge dashboard from `deploy/k8s/monitoring/grafana/alphashopper-frontend-edge-dashboard.json` is imported or provisioned.
 - [ ] HTTP responses include `X-Request-Id`, and application logs include the same `requestId`.
 - [ ] Kafka consumer lag is monitored.
 - [ ] Kafka notification DLT depth is monitored and has a runbook using `POST /api/admin/kafka/order-notifications/dlt/replay` plus audit review through `GET /api/admin/kafka/order-notifications/dlt/replay/audits`.
 - [ ] DLT replay metrics are scraped from `/actuator/prometheus`, including `alphashopper_kafka_dlt_replay_requests_total`, `alphashopper_kafka_dlt_replay_results_total`, `alphashopper_kafka_dlt_replay_messages_total`, and `alphashopper_kafka_dlt_replay_duration_seconds`.
 - [ ] DLT replay alert rules from `docs/alerts/dlt-replay-alerts.yml` are reviewed and adapted to the target Alertmanager routing policy.
+- [ ] Canary alert rules in `deploy/k8s/monitoring/base/prometheus-rule.yaml` are routed to the on-call channel.
+- [ ] Canary promotion and abort thresholds in `docs/canary-observability-runbook.md` are reviewed before traffic is shifted.
+- [ ] Availability SLO burn-rate alerts from `docs/alerts/availability-slo-alerts.yml` are routed and tested.
+- [ ] Alertmanager routing for critical, canary, and SLO alerts is reviewed against `docs/alerts/alertmanager-routing-example.yml`.
+- [ ] Ingress-nginx monitoring manifests from `deploy/k8s/monitoring/ingress/overlays/<env>` are applied and adjusted for the cluster's ingress controller labels.
+- [ ] Frontend synthetic checks for `/`, `/products`, and `/login` succeed on stable and canary paths.
 - [ ] Payment failure and webhook reconciliation logs are reviewed.
 - [ ] Checkout, payment, Kafka, email, and search logs are searchable by `event`, `requestId`, `orderId`, `memberId`, and `providerOrderId` where applicable.
 - [ ] Masked fields such as `paymentKey`, `transactionKey`, `trackingNumber`, and `recipient` do not expose raw secrets or personal email local parts.

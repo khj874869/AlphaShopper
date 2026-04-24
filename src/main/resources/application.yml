@@ -29,9 +29,31 @@ spring:
       timeout: ${REDIS_TIMEOUT:2s}
       repositories:
         enabled: false
+  lifecycle:
+    timeout-per-shutdown-phase: ${SPRING_LIFECYCLE_TIMEOUT_PER_SHUTDOWN_PHASE:30s}
+  datasource:
+    hikari:
+      maximum-pool-size: ${SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE:30}
+      minimum-idle: ${SPRING_DATASOURCE_HIKARI_MINIMUM_IDLE:10}
+      connection-timeout: ${SPRING_DATASOURCE_HIKARI_CONNECTION_TIMEOUT:30000}
+      validation-timeout: ${SPRING_DATASOURCE_HIKARI_VALIDATION_TIMEOUT:5000}
+      max-lifetime: ${SPRING_DATASOURCE_HIKARI_MAX_LIFETIME:1800000}
+      keepalive-time: ${SPRING_DATASOURCE_HIKARI_KEEPALIVE_TIME:300000}
 
 server:
   port: ${SERVER_PORT:8080}
+  shutdown: ${SERVER_SHUTDOWN:graceful}
+  compression:
+    enabled: ${SERVER_COMPRESSION_ENABLED:true}
+    min-response-size: ${SERVER_COMPRESSION_MIN_RESPONSE_SIZE:1024}
+  tomcat:
+    threads:
+      max: ${SERVER_TOMCAT_THREADS_MAX:200}
+      min-spare: ${SERVER_TOMCAT_THREADS_MIN_SPARE:20}
+    accept-count: ${SERVER_TOMCAT_ACCEPT_COUNT:100}
+    max-connections: ${SERVER_TOMCAT_MAX_CONNECTIONS:8192}
+    connection-timeout: ${SERVER_TOMCAT_CONNECTION_TIMEOUT:5s}
+    keep-alive-timeout: ${SERVER_TOMCAT_KEEP_ALIVE_TIMEOUT:20s}
 
 management:
   endpoints:
@@ -42,6 +64,16 @@ management:
     health:
       probes:
         enabled: true
+      group:
+        liveness:
+          include: livenessState,ping
+        readiness:
+          include: readinessState,ping,db
+  health:
+    livenessstate:
+      enabled: true
+    readinessstate:
+      enabled: true
 
 logging:
   pattern:
@@ -50,11 +82,17 @@ logging:
     org.hibernate.SQL: ${APP_LOG_SQL_LEVEL:info}
 
 app:
+  network:
+    trust-forwarded-headers: ${APP_NETWORK_TRUST_FORWARDED_HEADERS:false}
   auth:
     cookie:
       name: ${APP_AUTH_COOKIE_NAME:alphashopper_access_token}
       secure: ${APP_AUTH_COOKIE_SECURE:false}
       same-site: ${APP_AUTH_COOKIE_SAME_SITE:Lax}
+  management:
+    prometheus:
+      public-access: ${APP_MANAGEMENT_PROMETHEUS_PUBLIC_ACCESS:true}
+      allowed-ip-ranges: ${APP_MANAGEMENT_PROMETHEUS_ALLOWED_IP_RANGES:}
   frontend:
     base-url: ${APP_FRONTEND_BASE_URL:http://localhost:3000}
     allowed-origins: ${APP_FRONTEND_ALLOWED_ORIGINS:http://localhost:3000,http://127.0.0.1:3000}
@@ -90,7 +128,11 @@ app:
     toss:
       api-base-url: ${APP_PAYMENT_TOSS_API_BASE_URL:https://api.tosspayments.com}
       secret-key: ${APP_PAYMENT_TOSS_SECRET_KEY:}
+      webhook:
+        allowed-ip-ranges: ${APP_PAYMENT_TOSS_WEBHOOK_ALLOWED_IP_RANGES:}
+        max-skew-seconds: ${APP_PAYMENT_TOSS_WEBHOOK_MAX_SKEW_SECONDS:900}
   ai:
+    allow-anonymous: ${APP_AI_ALLOW_ANONYMOUS:true}
     rate-limit:
       enabled: ${APP_AI_RATE_LIMIT_ENABLED:true}
       window-seconds: ${APP_AI_RATE_LIMIT_WINDOW_SECONDS:60}

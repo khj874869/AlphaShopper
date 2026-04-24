@@ -1,0 +1,68 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: alphashopper-ingress
+  namespace: alphashopper
+spec:
+  groups:
+    - name: alphashopper-ingress-frontend
+      rules:
+        - alert: AlphaShopperFrontendIngressHigh5xxRate
+          expr: |
+            (
+              sum(rate(nginx_ingress_controller_requests{service="alphashopper-web",status=~"5.."}[5m]))
+              /
+              clamp_min(sum(rate(nginx_ingress_controller_requests{service="alphashopper-web"}[5m])), 0.001)
+            ) > 0.02
+          for: 10m
+          labels:
+            severity: warning
+            service: alphashopper-web
+            surface: ingress
+          annotations:
+            summary: AlphaShopper frontend ingress 5xx rate is elevated
+            description: Frontend edge 5xx ratio is above 2% for 10 minutes.
+            runbook_url: docs/alerts/frontend-ingress-runbook.md
+        - alert: AlphaShopperFrontendIngressHighP95Latency
+          expr: |
+            histogram_quantile(
+              0.95,
+              sum by (le) (
+                rate(nginx_ingress_controller_request_duration_seconds_bucket{service="alphashopper-web"}[5m])
+              )
+            ) > 1.5
+          for: 10m
+          labels:
+            severity: warning
+            service: alphashopper-web
+            surface: ingress
+          annotations:
+            summary: AlphaShopper frontend ingress p95 latency is high
+            description: Frontend edge p95 latency is above 1.5 seconds for 10 minutes.
+            runbook_url: docs/alerts/frontend-ingress-runbook.md
+        - alert: AlphaShopperFrontendCanaryIngressRegression
+          expr: |
+            (
+              sum(rate(nginx_ingress_controller_requests{service="alphashopper-web-canary",status=~"5.."}[5m]))
+              /
+              clamp_min(sum(rate(nginx_ingress_controller_requests{service="alphashopper-web-canary"}[5m])), 0.001)
+            )
+            >
+            (
+              (
+                sum(rate(nginx_ingress_controller_requests{service="alphashopper-web",status=~"5.."}[5m]))
+                /
+                clamp_min(sum(rate(nginx_ingress_controller_requests{service="alphashopper-web"}[5m])), 0.001)
+              ) + 0.02
+            )
+            and
+            sum(rate(nginx_ingress_controller_requests{service="alphashopper-web-canary"}[5m])) > 0.2
+          for: 5m
+          labels:
+            severity: critical
+            service: alphashopper-web-canary
+            surface: ingress
+          annotations:
+            summary: AlphaShopper frontend canary ingress regressed against stable
+            description: Frontend canary edge 5xx ratio is materially worse than stable while receiving traffic.
+            runbook_url: docs/alerts/frontend-ingress-runbook.md

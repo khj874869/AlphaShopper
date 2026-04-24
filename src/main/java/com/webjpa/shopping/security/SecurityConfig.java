@@ -8,10 +8,12 @@ import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
@@ -29,7 +31,9 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http,
                                                    JwtAuthenticationFilter jwtAuthenticationFilter,
-                                                   RestAuthenticationEntryPoint restAuthenticationEntryPoint) throws Exception {
+                                                   RestAuthenticationEntryPoint restAuthenticationEntryPoint,
+                                                   PrometheusAccessPolicy prometheusAccessPolicy,
+                                                   @Value("${app.ai.allow-anonymous:true}") boolean allowAnonymousAi) throws Exception {
         http
                 .csrf(csrf -> csrf
                         .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
@@ -47,12 +51,19 @@ public class SecurityConfig {
                 .exceptionHandling(exception -> exception.authenticationEntryPoint(restAuthenticationEntryPoint))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/", "/error", "/catalog/**", "/css/**", "/js/**", "/images/**").permitAll()
-                        .requestMatchers("/actuator/health", "/actuator/info", "/actuator/prometheus").permitAll()
+                        .requestMatchers("/actuator/health", "/actuator/health/**", "/actuator/info").permitAll()
+                        .requestMatchers("/actuator/prometheus")
+                        .access((authentication, context) -> new org.springframework.security.authorization.AuthorizationDecision(
+                                prometheusAccessPolicy.isAllowed(context.getRequest())
+                        ))
                         .requestMatchers(HttpMethod.GET, "/api/auth/csrf").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/login", "/api/auth/register", "/api/auth/logout", "/api/members").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/payments/toss/webhooks").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/products/**", "/api/coupons").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/ai/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/ai/**").access((authentication, context) ->
+                                new org.springframework.security.authorization.AuthorizationDecision(
+                                        allowAnonymousAi || isAuthenticatedUser(authentication.get())
+                                ))
                         .requestMatchers(HttpMethod.POST, "/api/analytics/product-clicks").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/analytics/product-impressions").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/admin/**").hasRole("ADMIN")
@@ -101,5 +112,11 @@ public class SecurityConfig {
                 .orElseThrow(() -> new org.springframework.security.core.userdetails.UsernameNotFoundException(
                         "Member not found. email=" + username
                 ));
+    }
+
+    private boolean isAuthenticatedUser(Authentication authentication) {
+        return authentication != null
+                && authentication.isAuthenticated()
+                && !(authentication instanceof AnonymousAuthenticationToken);
     }
 }

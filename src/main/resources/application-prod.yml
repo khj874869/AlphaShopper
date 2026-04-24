@@ -58,8 +58,18 @@ logging:
     org.hibernate.SQL: warn
 
 app:
+  management:
+    prometheus:
+      public-access: ${APP_MANAGEMENT_PROMETHEUS_PUBLIC_ACCESS:false}
+      allowed-ip-ranges: ${APP_MANAGEMENT_PROMETHEUS_ALLOWED_IP_RANGES}
   seed:
     demo-data:
       enabled: false
   payment:
     provider: ${APP_PAYMENT_PROVIDER:toss}
+    toss:
+      webhook:
+        allowed-ip-ranges: ${APP_PAYMENT_TOSS_WEBHOOK_ALLOWED_IP_RANGES}
+        max-skew-seconds: ${APP_PAYMENT_TOSS_WEBHOOK_MAX_SKEW_SECONDS:900}
+  ai:
+    allow-anonymous: ${APP_AI_ALLOW_ANONYMOUS:false}

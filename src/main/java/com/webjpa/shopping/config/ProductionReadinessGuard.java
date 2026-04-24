@@ -24,6 +24,12 @@ public class ProductionReadinessGuard {
     private final String datasourceUrl;
     private final String ddlAuto;
     private final boolean authCookieSecure;
+    private final boolean aiAllowAnonymous;
+    private final boolean prometheusPublicAccess;
+    private final String prometheusAllowedIpRanges;
+    private final String webhookAllowedIpRanges;
+    private final String serverShutdown;
+    private final boolean healthProbesEnabled;
     private final boolean flywayEnabled;
     private final boolean flywayCleanDisabled;
     private final boolean flywayValidateOnMigrate;
@@ -40,6 +46,12 @@ public class ProductionReadinessGuard {
                                     @Value("${spring.datasource.url:}") String datasourceUrl,
                                     @Value("${spring.jpa.hibernate.ddl-auto:}") String ddlAuto,
                                     @Value("${app.auth.cookie.secure:false}") boolean authCookieSecure,
+                                    @Value("${app.ai.allow-anonymous:true}") boolean aiAllowAnonymous,
+                                    @Value("${app.management.prometheus.public-access:true}") boolean prometheusPublicAccess,
+                                    @Value("${app.management.prometheus.allowed-ip-ranges:}") String prometheusAllowedIpRanges,
+                                    @Value("${app.payment.toss.webhook.allowed-ip-ranges:}") String webhookAllowedIpRanges,
+                                    @Value("${server.shutdown:immediate}") String serverShutdown,
+                                    @Value("${management.endpoint.health.probes.enabled:false}") boolean healthProbesEnabled,
                                     @Value("${spring.flyway.enabled:true}") boolean flywayEnabled,
                                     @Value("${spring.flyway.clean-disabled:true}") boolean flywayCleanDisabled,
                                     @Value("${spring.flyway.validate-on-migrate:true}") boolean flywayValidateOnMigrate,
@@ -55,6 +67,12 @@ public class ProductionReadinessGuard {
         this.datasourceUrl = datasourceUrl;
         this.ddlAuto = ddlAuto;
         this.authCookieSecure = authCookieSecure;
+        this.aiAllowAnonymous = aiAllowAnonymous;
+        this.prometheusPublicAccess = prometheusPublicAccess;
+        this.prometheusAllowedIpRanges = prometheusAllowedIpRanges;
+        this.webhookAllowedIpRanges = webhookAllowedIpRanges;
+        this.serverShutdown = serverShutdown;
+        this.healthProbesEnabled = healthProbesEnabled;
         this.flywayEnabled = flywayEnabled;
         this.flywayCleanDisabled = flywayCleanDisabled;
         this.flywayValidateOnMigrate = flywayValidateOnMigrate;
@@ -124,6 +142,30 @@ public class ProductionReadinessGuard {
 
         if (!authCookieSecure) {
             errors.add("APP_AUTH_COOKIE_SECURE must be true in production.");
+        }
+
+        if (aiAllowAnonymous) {
+            errors.add("app.ai.allow-anonymous must be false in production.");
+        }
+
+        if (prometheusPublicAccess) {
+            errors.add("app.management.prometheus.public-access must be false in production.");
+        }
+
+        if (prometheusAllowedIpRanges == null || prometheusAllowedIpRanges.isBlank()) {
+            errors.add("app.management.prometheus.allowed-ip-ranges must be configured in production.");
+        }
+
+        if ("toss".equalsIgnoreCase(paymentProvider) && (webhookAllowedIpRanges == null || webhookAllowedIpRanges.isBlank())) {
+            errors.add("app.payment.toss.webhook.allowed-ip-ranges must be configured in production.");
+        }
+
+        if (!"graceful".equalsIgnoreCase(serverShutdown)) {
+            errors.add("server.shutdown must be graceful in production.");
+        }
+
+        if (!healthProbesEnabled) {
+            errors.add("management.endpoint.health.probes.enabled must be true in production.");
         }
 
         if (!errors.isEmpty()) {

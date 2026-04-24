@@ -1,0 +1,248 @@
+name: Canary
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Target environment
+        required: true
+        type: choice
+        options:
+          - staging
+          - production
+      action:
+        description: Canary action
+        required: true
+        type: choice
+        options:
+          - deploy
+          - set-weight
+          - promote
+          - abort
+      target:
+        description: Canary target
+        required: true
+        type: choice
+        options:
+          - all
+          - backend
+          - frontend
+      weight:
+        description: Canary weight for deploy/set-weight
+        required: false
+        default: "5"
+        type: string
+      git_ref:
+        description: Git ref to deploy for canary deploy
+        required: false
+        type: string
+
+concurrency:
+  group: canary-${{ inputs.environment }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  canary:
+    name: Manage canary rollout
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    environment: ${{ inputs.environment }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.git_ref || github.ref }}
+
+      - name: Resolve release commit
+        id: release_ref
+        shell: bash
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: v1.31.0
+
+      - name: Configure kubeconfig
+        shell: bash
+        run: |
+          mkdir -p "$HOME/.kube"
+          echo "${{ secrets.KUBE_CONFIG }}" | base64 --decode > "$HOME/.kube/config"
+          chmod 600 "$HOME/.kube/config"
+
+      - name: Set up Java
+        if: inputs.action == 'deploy'
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+
+      - name: Run backend tests
+        if: inputs.action == 'deploy'
+        run: |
+          chmod +x ./mvnw
+          ./mvnw -B test
+
+      - name: Set up Node
+        if: inputs.action == 'deploy'
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: frontend/.nvmrc
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        if: inputs.action == 'deploy'
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build frontend
+        if: inputs.action == 'deploy'
+        working-directory: frontend
+        run: npm run build
+
+      - name: Log in to GHCR
+        if: inputs.action == 'deploy'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push backend canary image
+        if: inputs.action == 'deploy'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile.backend
+          push: true
+          tags: ${{ vars.BACKEND_IMAGE_REPO }}:${{ steps.release_ref.outputs.sha }}-canary
+
+      - name: Build and push frontend canary image
+        if: inputs.action == 'deploy'
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile
+          push: true
+          tags: ${{ vars.FRONTEND_IMAGE_REPO }}:${{ steps.release_ref.outputs.sha }}-canary
+
+      - name: Set up kustomize
+        if: inputs.action == 'deploy'
+        uses: imranismail/setup-kustomize@v2
+        with:
+          kustomize-version: "5.4.3"
+
+      - name: Render canary overlay with immutable image tags
+        if: inputs.action == 'deploy'
+        run: |
+          cd "deploy/k8s/canary/overlays/${{ inputs.environment }}"
+          kustomize edit set image ghcr.io/your-org/zigzag-shop-backend=${{ vars.BACKEND_IMAGE_REPO }}:${{ steps.release_ref.outputs.sha }}-canary
+          kustomize edit set image ghcr.io/your-org/alphashopper-web=${{ vars.FRONTEND_IMAGE_REPO }}:${{ steps.release_ref.outputs.sha }}-canary
+
+      - name: Apply canary manifests
+        if: inputs.action == 'deploy'
+        run: kubectl apply -k deploy/k8s/canary/overlays/${{ inputs.environment }}
+
+      - name: Remove untargeted canary workloads
+        if: inputs.action == 'deploy' && inputs.target != 'all'
+        env:
+          K8S_NAMESPACE: ${{ vars.K8S_NAMESPACE }}
+        shell: bash
+        run: |
+          if [[ "${{ inputs.target }}" == "backend" ]]; then
+            bash scripts/deploy/cleanup-canary.sh frontend
+          else
+            bash scripts/deploy/cleanup-canary.sh backend
+          fi
+
+      - name: Wait for canary rollouts
+        if: inputs.action == 'deploy'
+        env:
+          TARGET: ${{ inputs.target }}
+          K8S_NAMESPACE: ${{ vars.K8S_NAMESPACE }}
+        shell: bash
+        run: |
+          if [[ "$TARGET" == "all" || "$TARGET" == "backend" ]]; then
+            kubectl rollout status deployment/zigzag-backend-canary -n "$K8S_NAMESPACE" --timeout=10m
+          fi
+          if [[ "$TARGET" == "all" || "$TARGET" == "frontend" ]]; then
+            kubectl rollout status deployment/alphashopper-web-canary -n "$K8S_NAMESPACE" --timeout=10m
+          fi
+
+      - name: Set canary traffic weight
+        if: inputs.action == 'deploy' || inputs.action == 'set-weight'
+        env:
+          K8S_NAMESPACE: ${{ vars.K8S_NAMESPACE }}
+        run: bash scripts/deploy/set-canary-weight.sh "${{ inputs.target }}" "${{ inputs.weight }}"
+
+      - name: Run canary smoke tests
+        if: inputs.action == 'deploy'
+        env:
+          SHOP_BASE_URL: ${{ vars.SHOP_BASE_URL }}
+          API_BASE_URL: ${{ vars.API_BASE_URL }}
+          SMOKE_HEADER_NAME: X-Canary
+          SMOKE_HEADER_VALUE: always
+        run: |
+          bash scripts/deploy/smoke-test.sh
+          bash scripts/deploy/frontend-synthetic-check.sh
+
+      - name: Promote canary to stable
+        if: inputs.action == 'promote'
+        env:
+          K8S_NAMESPACE: ${{ vars.K8S_NAMESPACE }}
+        run: bash scripts/deploy/promote-canary.sh "${{ inputs.target }}"
+
+      - name: Clean up promoted canary workloads
+        if: inputs.action == 'promote'
+        env:
+          K8S_NAMESPACE: ${{ vars.K8S_NAMESPACE }}
+        run: bash scripts/deploy/cleanup-canary.sh "${{ inputs.target }}"
+
+      - name: Run stable smoke tests after promotion
+        if: inputs.action == 'promote'
+        env:
+          SHOP_BASE_URL: ${{ vars.SHOP_BASE_URL }}
+          API_BASE_URL: ${{ vars.API_BASE_URL }}
+        run: |
+          bash scripts/deploy/smoke-test.sh
+          bash scripts/deploy/frontend-synthetic-check.sh
+
+      - name: Abort canary rollout
+        if: inputs.action == 'abort'
+        env:
+          K8S_NAMESPACE: ${{ vars.K8S_NAMESPACE }}
+        shell: bash
+        run: |
+          bash scripts/deploy/set-canary-weight.sh "${{ inputs.target }}" "0" || true
+          bash scripts/deploy/cleanup-canary.sh "${{ inputs.target }}"
+
+      - name: Clean up failed canary rollout
+        if: failure() && inputs.action == 'deploy'
+        env:
+          K8S_NAMESPACE: ${{ vars.K8S_NAMESPACE }}
+        shell: bash
+        run: |
+          bash scripts/deploy/set-canary-weight.sh "${{ inputs.target }}" "0" || true
+          bash scripts/deploy/cleanup-canary.sh "${{ inputs.target }}" || true
+
+      - name: Notify Slack
+        if: always() && secrets.SLACK_WEBHOOK_URL != ''
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_TITLE: Canary workflow (${{ inputs.environment }})
+          SLACK_STATUS: ${{ job.status == 'success' && 'success' || 'failed' }}
+          SLACK_DETAILS: |
+            action=${{ inputs.action }}
+            target=${{ inputs.target }}
+            weight=${{ inputs.weight }}
+            commit=${{ steps.release_ref.outputs.sha }}
+            actor=${{ github.actor }}
+          SLACK_LINK: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: bash scripts/deploy/slack-notify.sh

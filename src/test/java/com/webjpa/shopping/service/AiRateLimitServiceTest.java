@@ -1,6 +1,7 @@
 package com.webjpa.shopping.service;
 
 import com.webjpa.shopping.common.ApiException;
+import com.webjpa.shopping.security.ClientAddressResolver;
 import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.ObjectProvider;
@@ -19,6 +20,7 @@ class AiRateLimitServiceTest {
     @Test
     void check_allowsRequestsWithinWindow() {
         AiRateLimitService service = new AiRateLimitService(
+                new ClientAddressResolver(false),
                 redisTemplateProvider,
                 false,
                 true,
@@ -35,6 +37,7 @@ class AiRateLimitServiceTest {
     @Test
     void check_rejectsRequestsOverLimit() {
         AiRateLimitService service = new AiRateLimitService(
+                new ClientAddressResolver(false),
                 redisTemplateProvider,
                 false,
                 true,
@@ -54,8 +57,9 @@ class AiRateLimitServiceTest {
     }
 
     @Test
-    void check_usesForwardedForWhenPresent() {
+    void check_usesRemoteAddressWhenForwardedHeadersAreNotTrusted() {
         AiRateLimitService service = new AiRateLimitService(
+                new ClientAddressResolver(false),
                 redisTemplateProvider,
                 false,
                 true,
@@ -64,7 +68,29 @@ class AiRateLimitServiceTest {
                 "test"
         );
         HttpServletRequest firstRequest = request("10.0.0.1", "203.0.113.11, 10.0.0.1");
-        HttpServletRequest secondRequest = request("10.0.0.2", "203.0.113.12, 10.0.0.2");
+        HttpServletRequest secondRequest = request("10.0.0.1", "203.0.113.12, 10.0.0.1");
+
+        service.check("recommendations", null, firstRequest);
+
+        assertThatThrownBy(() -> service.check("recommendations", null, secondRequest))
+                .isInstanceOf(ApiException.class)
+                .satisfies(ex -> assertThat(((ApiException) ex).getStatus())
+                        .isEqualTo(HttpStatus.TOO_MANY_REQUESTS));
+    }
+
+    @Test
+    void check_usesForwardedForWhenConfigured() {
+        AiRateLimitService service = new AiRateLimitService(
+                new ClientAddressResolver(true),
+                redisTemplateProvider,
+                false,
+                true,
+                60,
+                1,
+                "test"
+        );
+        HttpServletRequest firstRequest = request("10.0.0.1", "203.0.113.11, 10.0.0.1");
+        HttpServletRequest secondRequest = request("10.0.0.1", "203.0.113.12, 10.0.0.1");
 
         service.check("recommendations", null, firstRequest);
         service.check("recommendations", null, secondRequest);
