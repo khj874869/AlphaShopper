@@ -1,6 +1,6 @@
 services:
   kafka:
-    image: apache/kafka:3.9.1
+    image: apache/kafka:4.2.0
     container_name: zigzag-kafka
     ports:
       - "9092:9092"
@@ -12,7 +12,7 @@ services:
       start_period: 30s
 
   elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:9.2.6
+    image: docker.elastic.co/elasticsearch/elasticsearch:9.3.3
     container_name: zigzag-elasticsearch
     environment:
       discovery.type: single-node
@@ -31,7 +31,7 @@ services:
       start_period: 45s
 
   kibana:
-    image: docker.elastic.co/kibana/kibana:9.2.6
+    image: docker.elastic.co/kibana/kibana:9.3.3
     container_name: zigzag-kibana
     depends_on:
       elasticsearch:
@@ -48,7 +48,7 @@ services:
       start_period: 45s
 
   redis:
-    image: redis:8.2.3-alpine
+    image: redis:8.6.2-alpine
     container_name: zigzag-redis
     ports:
       - "6379:6379"
