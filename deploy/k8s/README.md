@@ -29,14 +29,14 @@ Build and push images first.
 Backend:
 
 ```bash
-docker build -f Dockerfile.backend -t ghcr.io/your-org/zigzag-shop-backend:TAG .
+BACKEND_IMAGE_TAG=ghcr.io/your-org/zigzag-shop-backend:TAG bash scripts/build-images.sh backend
 docker push ghcr.io/your-org/zigzag-shop-backend:TAG
 ```
 
 Frontend:
 
 ```bash
-docker build -f frontend/Dockerfile -t ghcr.io/your-org/alphashopper-web:TAG frontend
+FRONTEND_IMAGE_TAG=ghcr.io/your-org/alphashopper-web:TAG bash scripts/build-images.sh frontend
 docker push ghcr.io/your-org/alphashopper-web:TAG
 ```
 

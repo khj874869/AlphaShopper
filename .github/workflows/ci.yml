@@ -25,6 +25,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Validate shell script syntax
+        run: |
+          find scripts -name '*.sh' -print0 | xargs -0 -n1 bash -n
+
+      - name: Validate toolchain version alignment
+        run: bash scripts/verify-toolchain-versions.sh
+
       - name: Set up Java
         uses: actions/setup-java@v4
         with:
@@ -36,6 +43,57 @@ jobs:
         run: |
           chmod +x ./mvnw
           ./mvnw -B test
+
+  windows-tooling:
+    name: Windows tooling
+    runs-on: windows-latest
+    timeout-minutes: 15
+
+    defaults:
+      run:
+        shell: pwsh
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate PowerShell script syntax
+        run: |
+          $failures = @()
+          Get-ChildItem scripts -Filter *.ps1 -Recurse | ForEach-Object {
+            $parseErrors = $null
+            [void][System.Management.Automation.Language.Parser]::ParseFile($_.FullName, [ref]$null, [ref]$parseErrors)
+            if ($parseErrors.Count -gt 0) {
+              $failures += "$($_.FullName): $($parseErrors | ForEach-Object { $_.Message } | Join-String -Separator '; ')"
+            }
+          }
+
+          if ($failures.Count -gt 0) {
+            $failures | ForEach-Object { Write-Error $_ }
+            exit 1
+          }
+
+      - name: Validate toolchain version alignment
+        run: powershell -ExecutionPolicy Bypass -File .\scripts\verify-toolchain-versions.ps1
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm.cmd ci
+
+      - name: Lint
+        working-directory: frontend
+        run: npm.cmd run lint
+
+      - name: Build
+        working-directory: frontend
+        run: npm.cmd run build
 
   frontend:
     name: Frontend lint and build
@@ -49,6 +107,13 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Validate shell script syntax
+        run: |
+          find ../scripts -name '*.sh' -print0 | xargs -0 -n1 bash -n
+
+      - name: Validate toolchain version alignment
+        run: bash ../scripts/verify-toolchain-versions.sh
 
       - name: Set up Node
         uses: actions/setup-node@v4
@@ -77,6 +142,32 @@ jobs:
 
       - name: Validate Docker Compose config
         run: docker compose config
+
+  docker-images:
+    name: Docker image builds
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate shell script syntax
+        run: |
+          find scripts -name '*.sh' -print0 | xargs -0 -n1 bash -n
+
+      - name: Validate toolchain version alignment
+        run: bash scripts/verify-toolchain-versions.sh
+
+      - name: Build backend image
+        env:
+          BACKEND_IMAGE_TAG: zigzag-shop-backend:ci
+        run: bash scripts/build-images.sh backend
+
+      - name: Build frontend image
+        env:
+          FRONTEND_IMAGE_TAG: alphashopper-web:ci
+        run: bash scripts/build-images.sh frontend
 
   k8s:
     name: Kustomize overlays

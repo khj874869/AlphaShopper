@@ -6,6 +6,7 @@ node_modules/
 .next/
 frontend/node_modules/
 frontend/.next/
+.m2/
 .mvn/home/
 .mvn/repository/
 .mvn/wrapper/dist/

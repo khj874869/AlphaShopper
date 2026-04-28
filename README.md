@@ -69,6 +69,28 @@ Use the repository [.nvmrc](/abs/path/C:/Users/S-P-041/Downloads/webjpa/.nvmrc) 
 nvm use
 ```
 
+On Windows PowerShell, use `npm.cmd` instead of `npm` if script execution policy blocks the PowerShell shim.
+
+Before local builds or upgrades, you can verify that Java, Node, Dockerfiles, and GitHub Actions all point at the same toolchain versions:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\verify-toolchain-versions.ps1
+```
+
+```bash
+bash scripts/verify-toolchain-versions.sh
+```
+
+You can also build the release images locally with the shared scripts:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\build-images.ps1
+```
+
+```bash
+bash scripts/build-images.sh
+```
+
 ## Start local infrastructure
 
 ```bash
@@ -88,7 +110,23 @@ Services:
 ### Local profile with fake payment gateway
 
 ```bash
+bash scripts/preflight-local.sh
+```
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\preflight-local.ps1
+```
+
+```bash
 ./mvnw spring-boot:run
+```
+
+```bash
+bash scripts/start-local-backend.sh
+```
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\start-local-backend.ps1
 ```
 
 Back-office storefront shell:
@@ -102,6 +140,18 @@ cd frontend
 cp .env.local.example .env.local
 npm install
 npm run dev
+```
+
+```bash
+cd frontend
+npm ci
+bash ../scripts/start-local-frontend.sh
+```
+
+```powershell
+cd frontend
+npm.cmd ci
+powershell -ExecutionPolicy Bypass -File ..\scripts\start-local-frontend.ps1
 ```
 
 - `http://localhost:3000/`
@@ -122,17 +172,31 @@ H2 console in local only:
 3. Replace `APP_PAYMENT_TOSS_SECRET_KEY` in `.env.toss.local` with your Toss test secret key.
 4. Run the preflight check:
 
+```bash
+bash scripts/preflight-toss-local.sh
+```
+
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\preflight-toss-local.ps1
 ```
 
 5. Start the backend:
 
+```bash
+bash scripts/start-toss-local-backend.sh
+```
+
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\start-toss-local-backend.ps1
 ```
 
 6. Start the frontend:
+
+```bash
+cd frontend
+npm ci
+bash ../scripts/start-toss-local-frontend.sh
+```
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\start-toss-local-frontend.ps1

@@ -5,6 +5,7 @@ $repoRoot = Split-Path -Parent $scriptDir
 $frontendDir = Join-Path $repoRoot "frontend"
 
 . (Join-Path $scriptDir "Import-DotEnv.ps1")
+. (Join-Path $scriptDir "Preflight-Common.ps1")
 
 $backendEnvFile = Resolve-PreferredEnvFile `
     -PreferredPath (Join-Path $repoRoot ".env.toss.local") `
@@ -18,6 +19,9 @@ Import-DotEnvFile -Path $backendEnvFile
 Import-DotEnvFile -Path $frontendEnvFile
 
 $errors = @()
+$warnings = @()
+
+Add-CommonPreflightChecks -ScriptDir $scriptDir -FrontendDir $frontendDir -Errors ([ref]$errors) -Warnings ([ref]$warnings)
 
 if ($env:APP_PAYMENT_PROVIDER -ne "toss") {
     $errors += "APP_PAYMENT_PROVIDER must be toss."
@@ -42,6 +46,7 @@ if ($env:APP_FRONTEND_BASE_URL -ne "http://localhost:3000") {
 if ($errors.Count -gt 0) {
     Write-Host "Toss local preflight failed:" -ForegroundColor Red
     $errors | ForEach-Object { Write-Host " - $_" -ForegroundColor Red }
+    Write-PreflightWarnings -Warnings $warnings
     exit 1
 }
 
@@ -51,6 +56,8 @@ Write-Host "Frontend env file: $frontendEnvFile"
 Write-Host "Profiles         : $env:SPRING_PROFILES_ACTIVE"
 Write-Host "API base URL     : $env:NEXT_PUBLIC_API_BASE_URL"
 Write-Host "Storefront URL   : $env:APP_FRONTEND_BASE_URL"
+Write-PreflightWarnings -Warnings $warnings
+
 Write-Host ""
 Write-Host "Recommended next steps:"
 Write-Host "  1. docker compose up -d"

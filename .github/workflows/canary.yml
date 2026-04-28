@@ -75,6 +75,10 @@ jobs:
           echo "${{ secrets.KUBE_CONFIG }}" | base64 --decode > "$HOME/.kube/config"
           chmod 600 "$HOME/.kube/config"
 
+      - name: Validate toolchain version alignment
+        if: inputs.action == 'deploy'
+        run: bash scripts/verify-toolchain-versions.sh
+
       - name: Set up Java
         if: inputs.action == 'deploy'
         uses: actions/setup-java@v4
@@ -93,7 +97,7 @@ jobs:
         if: inputs.action == 'deploy'
         uses: actions/setup-node@v4
         with:
-          node-version-file: frontend/.nvmrc
+          node-version-file: .nvmrc
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
@@ -120,7 +124,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: ./Dockerfile.backend
+          file: ./Dockerfile
           push: true
           tags: ${{ vars.BACKEND_IMAGE_REPO }}:${{ steps.release_ref.outputs.sha }}-canary
 

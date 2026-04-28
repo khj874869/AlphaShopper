@@ -50,6 +50,40 @@ updates:
         patterns:
           - "*"
 
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:35"
+      timezone: "Asia/Seoul"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "backend"
+      - "infrastructure"
+    groups:
+      docker-backend-base-image:
+        patterns:
+          - "*"
+
+  - package-ecosystem: "docker"
+    directory: "/frontend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:40"
+      timezone: "Asia/Seoul"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "frontend"
+      - "infrastructure"
+    groups:
+      docker-frontend-base-image:
+        patterns:
+          - "*"
+
   - package-ecosystem: "docker-compose"
     directory: "/"
     schedule:
