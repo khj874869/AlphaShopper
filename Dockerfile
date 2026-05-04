@@ -1,4 +1,4 @@
-FROM maven:3.9.11-eclipse-temurin-17 AS build
+FROM maven:3.9.14-eclipse-temurin-25 AS build
 WORKDIR /workspace
 
 COPY pom.xml mvnw ./
@@ -7,7 +7,7 @@ COPY src src
 
 RUN chmod +x ./mvnw && ./mvnw -B -DskipTests package
 
-FROM eclipse-temurin:17-jre
+FROM eclipse-temurin:25-jre
 WORKDIR /app
 
 ENV JAVA_OPTS=""
