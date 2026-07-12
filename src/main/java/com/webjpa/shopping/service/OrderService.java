@@ -35,13 +35,16 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
+import java.util.regex.Pattern;
 
 @Service
 @Transactional(readOnly = true)
 public class OrderService {
 
     private static final Logger log = LoggerFactory.getLogger(OrderService.class);
+    private static final Pattern IDEMPOTENCY_KEY_PATTERN = Pattern.compile("[A-Za-z0-9._:-]{8,100}");
 
     private final MemberService memberService;
     private final CartService cartService;
@@ -72,8 +75,21 @@ public class OrderService {
 
     @Transactional
     public OrderResponse checkout(CheckoutRequest request) {
+        return checkout(request, null);
+    }
+
+    @Transactional
+    public OrderResponse checkout(CheckoutRequest request, String idempotencyKey) {
         if (usesHostedCheckout()) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Direct checkout is disabled for the configured payment provider.");
+        }
+
+        String normalizedIdempotencyKey = normalizeIdempotencyKey(idempotencyKey);
+        Optional<PurchaseOrder> existingOrder = findIdempotentOrder(request.memberId(), normalizedIdempotencyKey);
+        if (existingOrder.isPresent()) {
+            log.info("event=checkout.idempotent orderId={} memberId={} idempotencyKey={}",
+                    existingOrder.get().getId(), request.memberId(), LogValues.maskToken(normalizedIdempotencyKey));
+            return OrderResponse.from(existingOrder.get());
         }
 
         PurchaseOrder order = createOrderFromCart(
@@ -81,8 +97,11 @@ public class OrderService {
                 request.paymentMethod(),
                 request.shippingAddress(),
                 request.couponCode(),
-                request.paymentReference()
+                request.paymentReference(),
+                normalizedIdempotencyKey
         );
+
+        Map<Long, Product> lockedProducts = lockAndValidateStock(order);
 
         PaymentGateway.PaymentResult paymentResult = paymentGateway.authorize(
                 request.paymentMethod(),
@@ -96,24 +115,45 @@ public class OrderService {
             return OrderResponse.from(order);
         }
 
-        completeApprovedOrder(order, paymentResult.transactionKey(), order.getMember().getId());
+        completeApprovedOrder(order, paymentResult.transactionKey(), order.getMember().getId(), lockedProducts);
         return OrderResponse.from(order);
     }
 
     @Transactional
     public PrepareCheckoutResponse prepareCheckout(PrepareCheckoutRequest request) {
+        return prepareCheckout(request, null);
+    }
+
+    @Transactional
+    public PrepareCheckoutResponse prepareCheckout(PrepareCheckoutRequest request, String idempotencyKey) {
         requireHostedCheckoutProvider();
+
+        String normalizedIdempotencyKey = normalizeIdempotencyKey(idempotencyKey);
+        Optional<PurchaseOrder> existingOrder = findIdempotentOrder(request.memberId(), normalizedIdempotencyKey);
+        if (existingOrder.isPresent()) {
+            PurchaseOrder order = existingOrder.get();
+            validatePreparedOrderState(order, null);
+            log.info("event=checkout.hosted.idempotent orderId={} memberId={} providerOrderId={} idempotencyKey={}",
+                    order.getId(), request.memberId(), LogValues.safe(order.getPayment().getPaymentReference()),
+                    LogValues.maskToken(normalizedIdempotencyKey));
+            return startHostedCheckout(order);
+        }
 
         PurchaseOrder order = createOrderFromCart(
                 request.memberId(),
                 request.paymentMethod(),
                 request.shippingAddress(),
                 request.couponCode(),
-                generateProviderOrderId()
+                generateProviderOrderId(),
+                normalizedIdempotencyKey
         );
 
+        return startHostedCheckout(order);
+    }
+
+    private PrepareCheckoutResponse startHostedCheckout(PurchaseOrder order) {
         PaymentGateway.CheckoutStartResult checkoutStartResult = paymentGateway.startCheckout(
-                request.paymentMethod(),
+                order.getPayment().getMethod(),
                 order.getPayAmount(),
                 order.getPayment().getPaymentReference(),
                 buildOrderName(order)
@@ -139,7 +179,7 @@ public class OrderService {
     public OrderResponse confirmCheckout(ConfirmCheckoutRequest request, Long actorMemberId, boolean admin) {
         requireHostedCheckoutProvider();
 
-        PurchaseOrder order = getAccessibleOrderByProviderOrderId(request.providerOrderId(), actorMemberId, admin);
+        PurchaseOrder order = getAccessibleOrderByProviderOrderIdForUpdate(request.providerOrderId(), actorMemberId, admin);
         if (isApprovedOrder(order, request.paymentKey())) {
             log.info("event=checkout.confirm.idempotent orderId={} memberId={} provider={} providerOrderId={} paymentKey={}",
                     order.getId(),
@@ -150,7 +190,7 @@ public class OrderService {
             return OrderResponse.from(order);
         }
 
-        validatePreparedOrder(order, request.amount());
+        Map<Long, Product> lockedProducts = lockAndValidatePreparedOrder(order, request.amount());
         log.info("event=checkout.confirm.requested orderId={} memberId={} provider={} providerOrderId={} paymentKey={} requestedAmount={}",
                 order.getId(),
                 order.getMember().getId(),
@@ -171,7 +211,7 @@ public class OrderService {
             return OrderResponse.from(order);
         }
 
-        completeApprovedOrder(order, paymentResult.transactionKey(), order.getMember().getId());
+        completeApprovedOrder(order, paymentResult.transactionKey(), order.getMember().getId(), lockedProducts);
         return OrderResponse.from(order);
     }
 
@@ -179,7 +219,7 @@ public class OrderService {
     public void markCheckoutFailed(CheckoutFailureReportRequest request, Long actorMemberId, boolean admin) {
         requireHostedCheckoutProvider();
 
-        PurchaseOrder order = getAccessibleOrderByProviderOrderId(request.providerOrderId(), actorMemberId, admin);
+        PurchaseOrder order = getAccessibleOrderByProviderOrderIdForUpdate(request.providerOrderId(), actorMemberId, admin);
         log.warn("event=checkout.hosted.failed_reported orderId={} memberId={} provider={} providerOrderId={} errorCode={} errorMessage={}",
                 order.getId(),
                 order.getMember().getId(),
@@ -203,7 +243,7 @@ public class OrderService {
 
     @Transactional
     public OrderResponse refund(Long orderId, String reason, Long actorMemberId, boolean admin) {
-        PurchaseOrder order = getAccessibleOrder(orderId, actorMemberId, admin);
+        PurchaseOrder order = getAccessibleOrderForUpdate(orderId, actorMemberId, admin);
 
         if (order.getStatus() != OrderStatus.PAID) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Only paid orders can be refunded.");
@@ -234,7 +274,7 @@ public class OrderService {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Payment key is required to reconcile an approved payment.");
         }
 
-        PurchaseOrder order = getDetailOrderByProviderOrderId(providerOrderId);
+        PurchaseOrder order = getDetailOrderByProviderOrderIdForUpdate(providerOrderId);
         if (isApprovedOrder(order, transactionKey)) {
             log.info("event=payment.reconcile.skipped reason=already_approved orderId={} memberId={} provider={} providerOrderId={} transactionKey={}",
                     order.getId(),
@@ -256,15 +296,15 @@ public class OrderService {
             return;
         }
 
-        validatePreparedOrder(order, approvedAmount);
-        completeApprovedOrder(order, transactionKey, order.getMember().getId());
+        Map<Long, Product> lockedProducts = lockAndValidatePreparedOrder(order, approvedAmount);
+        completeApprovedOrder(order, transactionKey, order.getMember().getId(), lockedProducts);
     }
 
     @Transactional
     public void reconcileCanceledPayment(String providerOrderId, String transactionKey, String reason) {
         requireHostedCheckoutProvider();
 
-        PurchaseOrder order = getDetailOrderByProviderOrderId(providerOrderId);
+        PurchaseOrder order = getDetailOrderByProviderOrderIdForUpdate(providerOrderId);
         if (order.getStatus() == OrderStatus.CANCELLED && order.getPayment().getStatus() == PaymentStatus.REFUNDED) {
             log.info("event=payment.reconcile.skipped reason=already_refunded orderId={} memberId={} provider={} providerOrderId={} transactionKey={}",
                     order.getId(),
@@ -299,13 +339,13 @@ public class OrderService {
     public void reconcileFailedPayment(String providerOrderId, String reason) {
         requireHostedCheckoutProvider();
 
-        PurchaseOrder order = getDetailOrderByProviderOrderId(providerOrderId);
+        PurchaseOrder order = getDetailOrderByProviderOrderIdForUpdate(providerOrderId);
         failPreparedOrder(order, reason);
     }
 
     @Transactional
     public OrderResponse updateDelivery(Long orderId, DeliveryStatus deliveryStatus, String trackingNumber) {
-        PurchaseOrder order = getDetailOrder(orderId);
+        PurchaseOrder order = getDetailOrderForUpdate(orderId);
 
         if (order.getStatus() == OrderStatus.CANCELLED) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Cancelled orders cannot change delivery status.");
@@ -349,6 +389,16 @@ public class OrderService {
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Order not found. providerOrderId=" + providerOrderId));
     }
 
+    private PurchaseOrder getDetailOrderForUpdate(Long orderId) {
+        return purchaseOrderRepository.findByIdForUpdate(orderId)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Order not found. id=" + orderId));
+    }
+
+    private PurchaseOrder getDetailOrderByProviderOrderIdForUpdate(String providerOrderId) {
+        return purchaseOrderRepository.findByProviderOrderIdForUpdate(providerOrderId)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Order not found. providerOrderId=" + providerOrderId));
+    }
+
     private PurchaseOrder getAccessibleOrder(Long orderId, Long actorMemberId, boolean admin) {
         PurchaseOrder order = getDetailOrder(orderId);
         if (!admin && !order.getMember().getId().equals(actorMemberId)) {
@@ -357,8 +407,24 @@ public class OrderService {
         return order;
     }
 
+    private PurchaseOrder getAccessibleOrderForUpdate(Long orderId, Long actorMemberId, boolean admin) {
+        PurchaseOrder order = getDetailOrderForUpdate(orderId);
+        if (!admin && !order.getMember().getId().equals(actorMemberId)) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "You do not have access to this order.");
+        }
+        return order;
+    }
+
     private PurchaseOrder getAccessibleOrderByProviderOrderId(String providerOrderId, Long actorMemberId, boolean admin) {
         PurchaseOrder order = getDetailOrderByProviderOrderId(providerOrderId);
+        if (!admin && !order.getMember().getId().equals(actorMemberId)) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "You do not have access to this order.");
+        }
+        return order;
+    }
+
+    private PurchaseOrder getAccessibleOrderByProviderOrderIdForUpdate(String providerOrderId, Long actorMemberId, boolean admin) {
+        PurchaseOrder order = getDetailOrderByProviderOrderIdForUpdate(providerOrderId);
         if (!admin && !order.getMember().getId().equals(actorMemberId)) {
             throw new ApiException(HttpStatus.FORBIDDEN, "You do not have access to this order.");
         }
@@ -389,7 +455,8 @@ public class OrderService {
                                               PaymentMethod paymentMethod,
                                               String shippingAddress,
                                               String couponCode,
-                                              String paymentReference) {
+                                              String paymentReference,
+                                              String idempotencyKey) {
         Member member = memberService.getEntity(memberId);
         Cart cart = cartService.getDetailEntity(member.getId());
 
@@ -400,6 +467,7 @@ public class OrderService {
         validateStock(cart);
 
         PurchaseOrder order = PurchaseOrder.create(member, shippingAddress);
+        order.assignIdempotencyKey(idempotencyKey);
         for (CartItem cartItem : cart.getItems()) {
             order.addItem(cartItem.getProduct(), cartItem.getQuantity(), cartItem.getUnitPrice());
         }
@@ -423,7 +491,7 @@ public class OrderService {
         return savedOrder;
     }
 
-    private void validatePreparedOrder(PurchaseOrder order, BigDecimal requestedAmount) {
+    private void validatePreparedOrderState(PurchaseOrder order, BigDecimal requestedAmount) {
         if (order.getStatus() != OrderStatus.CREATED) {
             throw new ApiException(HttpStatus.CONFLICT, "Order is not awaiting payment confirmation.");
         }
@@ -436,11 +504,15 @@ public class OrderService {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Payment amount does not match the prepared order.");
         }
 
-        validateStock(order);
     }
 
-    private void validateStock(PurchaseOrder order) {
-        Map<Long, Product> productsById = getOrderItemProducts(order);
+    private Map<Long, Product> lockAndValidatePreparedOrder(PurchaseOrder order, BigDecimal requestedAmount) {
+        validatePreparedOrderState(order, requestedAmount);
+        return lockAndValidateStock(order);
+    }
+
+    private Map<Long, Product> lockAndValidateStock(PurchaseOrder order) {
+        Map<Long, Product> productsById = getOrderItemProductsForUpdate(order);
         for (OrderItem item : order.getItems()) {
             Product product = productsById.get(item.getProductId());
             if (!product.hasEnoughStock(item.getQuantity())) {
@@ -448,10 +520,13 @@ public class OrderService {
                         "Insufficient stock. productId=" + item.getProductId());
             }
         }
+        return productsById;
     }
 
-    private void completeApprovedOrder(PurchaseOrder order, String transactionKey, Long memberId) {
-        Map<Long, Product> productsById = getOrderItemProducts(order);
+    private void completeApprovedOrder(PurchaseOrder order,
+                                       String transactionKey,
+                                       Long memberId,
+                                       Map<Long, Product> productsById) {
         for (OrderItem item : order.getItems()) {
             Product product = productsById.get(item.getProductId());
             product.decreaseStock(item.getQuantity());
@@ -503,17 +578,37 @@ public class OrderService {
     }
 
     private void restoreStock(PurchaseOrder order) {
-        Map<Long, Product> productsById = getOrderItemProducts(order);
+        Map<Long, Product> productsById = getOrderItemProductsForUpdate(order);
         order.getItems().forEach(item -> {
             Product product = productsById.get(item.getProductId());
             product.increaseStock(item.getQuantity());
         });
     }
 
-    private Map<Long, Product> getOrderItemProducts(PurchaseOrder order) {
-        return productService.getEntitiesByIds(order.getItems().stream()
+    private Map<Long, Product> getOrderItemProductsForUpdate(PurchaseOrder order) {
+        return productService.getEntitiesByIdsForUpdate(order.getItems().stream()
                 .map(OrderItem::getProductId)
                 .toList());
+    }
+
+    private Optional<PurchaseOrder> findIdempotentOrder(Long memberId, String idempotencyKey) {
+        if (idempotencyKey == null) {
+            return Optional.empty();
+        }
+        return purchaseOrderRepository.findByMemberIdAndIdempotencyKey(memberId, idempotencyKey);
+    }
+
+    private String normalizeIdempotencyKey(String idempotencyKey) {
+        if (idempotencyKey == null || idempotencyKey.isBlank()) {
+            return null;
+        }
+
+        String normalized = idempotencyKey.trim();
+        if (!IDEMPOTENCY_KEY_PATTERN.matcher(normalized).matches()) {
+            throw new ApiException(HttpStatus.BAD_REQUEST,
+                    "Idempotency-Key must be 8-100 characters using letters, numbers, '.', '_', ':', or '-'.");
+        }
+        return normalized;
     }
 
     private boolean usesHostedCheckout() {

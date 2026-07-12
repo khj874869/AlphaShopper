@@ -14,6 +14,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -27,6 +28,10 @@ public class PurchaseOrder {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Version
+    @Column(nullable = false)
+    private long version;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "member_id", nullable = false)
@@ -68,6 +73,9 @@ public class PurchaseOrder {
 
     private LocalDateTime deliveredAt;
 
+    @Column(name = "idempotency_key", length = 100)
+    private String idempotencyKey;
+
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<OrderItem> items = new ArrayList<>();
 
@@ -90,6 +98,10 @@ public class PurchaseOrder {
 
     public static PurchaseOrder create(Member member, String shippingAddress) {
         return new PurchaseOrder(member, shippingAddress);
+    }
+
+    public void assignIdempotencyKey(String idempotencyKey) {
+        this.idempotencyKey = idempotencyKey;
     }
 
     public void addItem(Product product, int quantity, BigDecimal unitPrice) {
@@ -190,6 +202,10 @@ public class PurchaseOrder {
 
     public LocalDateTime getDeliveredAt() {
         return deliveredAt;
+    }
+
+    public String getIdempotencyKey() {
+        return idempotencyKey;
     }
 
     public List<OrderItem> getItems() {

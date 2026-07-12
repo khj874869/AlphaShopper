@@ -46,7 +46,12 @@ public class TossPaymentsGateway implements PaymentGateway {
                 frontendBaseUrl + "/payments/toss/fail"
         );
 
-        TossPaymentResponse response = post("/v1/payments", request, TossPaymentResponse.class);
+        TossPaymentResponse response = post(
+                "/v1/payments",
+                request,
+                TossPaymentResponse.class,
+                stableIdempotencyKey("checkout", providerOrderId)
+        );
         if (response == null || response.checkout() == null || response.checkout().url() == null || response.checkout().url().isBlank()) {
             throw new ApiException(HttpStatus.BAD_GATEWAY, "Toss checkout URL is missing.");
         }
@@ -58,7 +63,8 @@ public class TossPaymentsGateway implements PaymentGateway {
     public PaymentResult authorize(PaymentMethod paymentMethod, BigDecimal amount, String paymentReference, String providerOrderId) {
         TossPaymentResponse response = post("/v1/payments/confirm",
                 new TossConfirmPaymentRequest(paymentReference, providerOrderId, amount),
-                TossPaymentResponse.class);
+                TossPaymentResponse.class,
+                stableIdempotencyKey("confirm", providerOrderId));
 
         if (response == null || response.paymentKey() == null || response.paymentKey().isBlank()) {
             throw new ApiException(HttpStatus.BAD_GATEWAY, "Toss payment confirmation did not return a payment key.");
@@ -71,7 +77,8 @@ public class TossPaymentsGateway implements PaymentGateway {
     public boolean refund(String transactionKey, BigDecimal amount, String reason) {
         TossPaymentResponse response = post("/v1/payments/" + transactionKey + "/cancel",
                 new TossCancelPaymentRequest(reason, amount),
-                TossPaymentResponse.class);
+                TossPaymentResponse.class,
+                stableIdempotencyKey("refund", transactionKey));
         return response != null && response.paymentKey() != null && !response.paymentKey().isBlank();
     }
 
@@ -102,17 +109,21 @@ public class TossPaymentsGateway implements PaymentGateway {
         }
     }
 
-    private <T> T post(String uri, Object body, Class<T> responseType) {
+    private <T> T post(String uri, Object body, Class<T> responseType, String idempotencyKey) {
         try {
             return restClient.post()
                     .uri(uri)
-                    .header("Idempotency-Key", UUID.randomUUID().toString())
+                    .header("Idempotency-Key", idempotencyKey)
                     .body(body)
                     .retrieve()
                     .body(responseType);
         } catch (RestClientException ex) {
             throw new ApiException(HttpStatus.BAD_GATEWAY, "Toss payment request failed: " + ex.getMessage());
         }
+    }
+
+    private static String stableIdempotencyKey(String operation, String businessKey) {
+        return UUID.nameUUIDFromBytes((operation + ":" + businessKey).getBytes(StandardCharsets.UTF_8)).toString();
     }
 
     private static String encodeSecretKey(String secretKey) {

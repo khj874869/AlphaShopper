@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -35,9 +36,10 @@ public class OrderController {
 
     @PostMapping("/checkout/prepare")
     public PrepareCheckoutResponse prepareCheckout(@AuthenticationPrincipal AuthenticatedMember authenticatedMember,
+                                                   @RequestHeader(name = "Idempotency-Key", required = false) String idempotencyKey,
                                                    @Valid @RequestBody PrepareCheckoutRequest request) {
         accessGuard.requireMemberAccess(request.memberId(), authenticatedMember);
-        return orderService.prepareCheckout(request);
+        return orderService.prepareCheckout(request, idempotencyKey);
     }
 
     @PostMapping("/checkout/confirm")
@@ -56,9 +58,10 @@ public class OrderController {
 
     @PostMapping("/checkout")
     public OrderResponse checkout(@AuthenticationPrincipal AuthenticatedMember authenticatedMember,
+                                  @RequestHeader(name = "Idempotency-Key", required = false) String idempotencyKey,
                                   @Valid @RequestBody CheckoutRequest request) {
         accessGuard.requireMemberAccess(request.memberId(), authenticatedMember);
-        return orderService.checkout(request);
+        return orderService.checkout(request, idempotencyKey);
     }
 
     @GetMapping("/{orderId}")
