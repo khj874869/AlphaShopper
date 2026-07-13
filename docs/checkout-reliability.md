@@ -19,4 +19,4 @@ AlphaShopper checkout operations support safe client retries through the `Idempo
 
 ## Operations
 
-Migration `V8__checkout_concurrency_and_idempotency.sql` must be applied before deploying the updated application. Monitor duplicate-key, lock-timeout, and payment-provider retry errors during rollout.
+Migration `V8__checkout_concurrency_and_idempotency.sql` must be applied before deploying the updated application. Monitor duplicate-key, lock-timeout, and payment-provider retry errors during rollout. Run the full Maven test suite before promotion.
