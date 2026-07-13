@@ -476,7 +476,9 @@ public class OrderService {
 
         Payment payment = Payment.ready(order, paymentMethod, order.getPayAmount(), paymentReference);
         order.attachPayment(payment);
-        PurchaseOrder savedOrder = purchaseOrderRepository.save(order);
+        // Flush before any external payment call so the idempotency constraint
+        // wins concurrent retries before they can create duplicate charges.
+        PurchaseOrder savedOrder = purchaseOrderRepository.saveAndFlush(order);
         log.info("event=order.created orderId={} memberId={} provider={} paymentMethod={} providerOrderId={} itemCount={} totalAmount={} discountAmount={} payAmount={} couponApplied={}",
                 savedOrder.getId(),
                 member.getId(),
